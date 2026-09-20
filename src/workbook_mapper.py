@@ -14,6 +14,42 @@ from openpyxl import load_workbook
 
 TECHNICAL_COLUMNS = ["FarmCode", "RowCode", "RowTitle", "DynRowSerial", "Dimension1"]
 
+AUTUMN_SOWN_ROW_CODES = [
+    "m5410",
+    "m5411",
+    "m5412",
+    "m5413",
+    "m5414",
+    "m5415",
+    "m5416",
+    "m5417",
+    "m5418",
+    "m5422",
+    "m5423",
+    "m5424",
+    "m5425",
+    "m5429",
+    "m5430",
+]
+
+AUTUMN_SOWN_LABELS = {
+    "m5410": "Mezei leltár összesen",
+    "m5411": "Őszi búza",
+    "m5412": "Durumbúza",
+    "m5413": "Rozs",
+    "m5414": "Őszi árpa",
+    "m5415": "Triticale",
+    "m5416": "Repce",
+    "m5417": "Őszi takarmánykeverék",
+    "m5418": "Évelő pillangósok",
+    "m5422": "Egyéb szántóföldi kultúra",
+    "m5423": "Rét-legelő",
+    "m5424": "Zöldségtermelés",
+    "m5425": "Virág- és dísznövény termelés",
+    "m5429": "Egyéb kertészeti termelés",
+    "m5430": "Tavaszi vetések előkészítése",
+}
+
 
 @dataclass(frozen=True)
 class SheetTemplate:
@@ -300,6 +336,91 @@ def build_sheet_view(
             records.append(record)
 
     return pd.DataFrame(records)
+
+
+def _parse_export_number(value: Any) -> float | None:
+    text = _clean(value)
+    if not text:
+        return None
+
+    if text.startswith("="):
+        text = text[1:].strip()
+
+    compact = text.replace(" ", "")
+    if "," in compact and "." in compact:
+        if compact.rfind(",") > compact.rfind("."):
+            compact = compact.replace(".", "").replace(",", ".")
+        else:
+            compact = compact.replace(",", "")
+    else:
+        compact = compact.replace(",", ".")
+
+    try:
+        number = float(compact)
+    except ValueError:
+        return None
+
+    if number == 0:
+        return None
+    return round(number, 2)
+
+
+def build_autumn_sown_view(
+    dataframe: pd.DataFrame,
+    template: SheetTemplate,
+    farm_code: str,
+) -> pd.DataFrame:
+    """Build the first targeted export: non-zero autumn-sown area rows from 5C."""
+
+    columns = ["Üzemkód", "RowCode", "Sor megnevezése", "Érték"]
+    sheet_rows = dataframe[
+        (dataframe["akod"] == farm_code)
+        & (dataframe["sheet_name"] == template.sheet_name)
+        & (dataframe["osz"] == "5")
+    ]
+
+    template_rows = {row["row_code"]: row for row in template.rows}
+    records: list[dict[str, Any]] = []
+    wheat_values: dict[str, float] = {}
+
+    for row_code in AUTUMN_SOWN_ROW_CODES:
+        template_row = template_rows.get(row_code)
+        if template_row is None:
+            continue
+
+        source_rows = sheet_rows[sheet_rows["sor"] == row_code]
+        values = [
+            number
+            for number in (_parse_export_number(value) for value in source_rows["ertek"].tolist())
+            if number is not None
+        ]
+        if values:
+            value = round(sum(values), 2)
+            record = {
+                "Üzemkód": farm_code,
+                "RowCode": row_code,
+                "Sor megnevezése": AUTUMN_SOWN_LABELS.get(
+                    row_code,
+                    template_row["row_title"],
+                ),
+                "Érték": value,
+            }
+            records.append(record)
+
+            if row_code in {"m5411", "m5412"}:
+                wheat_values[row_code] = value
+
+        if row_code == "m5412" and wheat_values:
+            records.append(
+                {
+                    "Üzemkód": farm_code,
+                    "RowCode": "",
+                    "Sor megnevezése": "Búza",
+                    "Érték": round(sum(wheat_values.values()), 2),
+                }
+            )
+
+    return pd.DataFrame(records, columns=columns)
 
 
 def _looks_like_closing_row(text: str) -> bool:

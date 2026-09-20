@@ -2,12 +2,16 @@ from __future__ import annotations
 
 from datetime import datetime
 import hashlib
+from io import BytesIO
+import re
 import sys
 from pathlib import Path
+from zipfile import ZIP_DEFLATED, ZipFile
 
 import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 
 APP_DIR = Path(__file__).resolve().parent
 SRC_DIR = APP_DIR / "src"
@@ -26,6 +30,7 @@ if str(SRC_DIR) not in sys.path:
 
 from workbook_mapper import (
     attach_sheet_names,
+    build_autumn_sown_view,
     build_sheet_view,
     list_farms,
     load_bulk_data,
@@ -232,6 +237,37 @@ def inject_language_hints() -> None:
     )
 
 
+def clear_targeted_export_state() -> None:
+    for key in list(st.session_state.keys()):
+        if key.startswith("target_farm_"):
+            st.session_state.pop(key, None)
+
+    for key in [
+        "target_export_download_data",
+        "target_export_download_name",
+        "target_export_download_mime",
+        "target_export_subject_autumn",
+        "target_export_open",
+        "target_export_generating",
+    ]:
+        st.session_state.pop(key, None)
+
+
+def open_targeted_export() -> None:
+    st.session_state["target_export_open"] = True
+    st.session_state["target_export_generating"] = False
+    clear_targeted_export_download()
+
+
+def clear_targeted_export_download() -> None:
+    for key in [
+        "target_export_download_data",
+        "target_export_download_name",
+        "target_export_download_mime",
+    ]:
+        st.session_state.pop(key, None)
+
+
 def clear_uploaded_sources() -> None:
     st.session_state["uploader_nonce"] = st.session_state.get("uploader_nonce", 0) + 1
     for key in [
@@ -242,6 +278,7 @@ def clear_uploaded_sources() -> None:
         "loaded_template_name",
     ]:
         st.session_state.pop(key, None)
+    clear_targeted_export_state()
 
 
 def read_help_text() -> str:
@@ -282,6 +319,7 @@ def load_session_sources(
         st.session_state["loaded_bulk_data"] = bulk_data
         st.session_state["loaded_bulk_name"] = bulk_name
         st.session_state["loaded_template_name"] = template_name
+        clear_targeted_export_state()
 
     return (
         st.session_state["loaded_template_bundle"],
@@ -312,8 +350,12 @@ def resolve_sources():
         on_click=clear_uploaded_sources,
         use_container_width=True,
     )
-
     if bulk_upload is None or template_upload is None:
+        st.sidebar.button(
+            "Célzott export",
+            disabled=True,
+            use_container_width=True,
+        )
         st.info("A kezdéshez tölts fel egy ömlesztett és egy táblázatos Excel-fájlt a bal oldali sávban.")
         st.stop()
 
@@ -377,6 +419,220 @@ def dataframe_to_csv_bytes(dataframe: pd.DataFrame) -> bytes:
     return dataframe.to_csv(index=False).encode("utf-8-sig")
 
 
+def _safe_farm_filename(farm_code: str) -> str:
+    safe_name = re.sub(r"[^0-9A-Za-z_-]+", "-", farm_code).strip("-")
+    return safe_name or "uzem"
+
+
+def dataframe_to_excel_bytes(dataframe: pd.DataFrame, sheet_name: str) -> bytes:
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        dataframe.to_excel(writer, index=False, sheet_name=sheet_name)
+        worksheet = writer.sheets[sheet_name]
+        worksheet.freeze_panes = "A2"
+        worksheet.auto_filter.ref = worksheet.dimensions
+        worksheet.sheet_view.showGridLines = True
+        worksheet.sheet_properties.tabColor = "00F7C2"
+
+        header_fill = PatternFill(fill_type="solid", fgColor="0B4A40")
+        header_font = Font(bold=True, color="DBFFF8")
+        thin_border = Border(
+            left=Side(style="thin", color="B7C9C5"),
+            right=Side(style="thin", color="B7C9C5"),
+            top=Side(style="thin", color="B7C9C5"),
+            bottom=Side(style="thin", color="B7C9C5"),
+        )
+        for row in worksheet.iter_rows():
+            for cell in row:
+                cell.border = thin_border
+
+        for cell in worksheet[1]:
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal="center", vertical="center")
+
+        for column_cells in worksheet.columns:
+            column_letter = column_cells[0].column_letter
+            values = [str(cell.value or "") for cell in column_cells]
+            width = min(max(max(len(value) for value in values) + 2, 12), 42)
+            worksheet.column_dimensions[column_letter].width = width
+
+        if "Érték" in dataframe.columns:
+            value_column_index = list(dataframe.columns).index("Érték") + 1
+            for row in worksheet.iter_rows(
+                min_row=2,
+                min_col=value_column_index,
+                max_col=value_column_index,
+            ):
+                row[0].number_format = "0.00"
+
+    return output.getvalue()
+
+
+def build_targeted_export_payload(
+    selected_farms: list[str],
+    template_bundle: dict,
+    bulk_data: pd.DataFrame,
+) -> tuple[bytes, str, str]:
+    export_files: list[tuple[str, bytes]] = []
+    autumn_template = template_bundle["sheets"]["t5_c"]
+
+    for farm_code in selected_farms:
+        export_df = build_autumn_sown_view(
+            dataframe=bulk_data,
+            template=autumn_template,
+            farm_code=farm_code,
+        )
+        workbook_bytes = dataframe_to_excel_bytes(
+            dataframe=export_df,
+            sheet_name="Ősszel vetett terület",
+        )
+        filename = f"{_safe_farm_filename(farm_code)}_ossszel_vetett_terulet.xlsx"
+        export_files.append((filename, workbook_bytes))
+
+    if len(export_files) == 1:
+        filename, workbook_bytes = export_files[0]
+        return workbook_bytes, filename, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+    archive_buffer = BytesIO()
+    with ZipFile(archive_buffer, mode="w", compression=ZIP_DEFLATED) as archive:
+        for filename, workbook_bytes in export_files:
+            archive.writestr(filename, workbook_bytes)
+
+    return archive_buffer.getvalue(), "celzott_export.zip", "application/zip"
+
+
+def _target_farm_key(farm_code: str) -> str:
+    return f"target_farm_{farm_code}"
+
+
+def _initialize_target_farm_state(farms: list[str]) -> None:
+    farm_keys = {_target_farm_key(farm_code) for farm_code in farms}
+    for key in list(st.session_state.keys()):
+        if key.startswith("target_farm_") and key not in farm_keys:
+            st.session_state.pop(key, None)
+    for farm_code in farms:
+        st.session_state.setdefault(_target_farm_key(farm_code), False)
+
+
+def _select_all_target_farms(farms: list[str]) -> None:
+    for farm_code in farms:
+        st.session_state[_target_farm_key(farm_code)] = True
+    clear_targeted_export_download()
+
+
+def _clear_all_target_farms(farms: list[str]) -> None:
+    for farm_code in farms:
+        st.session_state[_target_farm_key(farm_code)] = False
+    clear_targeted_export_download()
+
+
+@st.dialog("Célzott export")
+def show_targeted_export_dialog(
+    farms: list[str],
+    template_bundle: dict,
+    bulk_data: pd.DataFrame,
+) -> None:
+    _initialize_target_farm_state(farms)
+    st.session_state.setdefault("target_export_subject_autumn", True)
+    st.session_state.setdefault("target_export_generating", False)
+
+    st.caption("Válaszd ki az üzemeket és az export tárgyát.")
+    farm_column, subject_column = st.columns([1.45, 1])
+
+    with farm_column:
+        st.subheader("Üzemek")
+        select_all_column, clear_all_column = st.columns(2)
+        with select_all_column:
+            st.button(
+                "Összes kijelölése",
+                on_click=_select_all_target_farms,
+                args=(farms,),
+                use_container_width=True,
+            )
+        with clear_all_column:
+            st.button(
+                "Kijelölés törlése",
+                on_click=_clear_all_target_farms,
+                args=(farms,),
+                use_container_width=True,
+            )
+
+        with st.container(height=360, border=True):
+            for farm_code in farms:
+                st.checkbox(
+                    farm_code,
+                    key=_target_farm_key(farm_code),
+                    on_change=clear_targeted_export_download,
+                )
+
+    with subject_column:
+        st.subheader("Export tárgya")
+        st.checkbox(
+            "Ősszel vetett terület",
+            key="target_export_subject_autumn",
+            on_change=clear_targeted_export_download,
+        )
+        st.checkbox(
+            "Készletek",
+            value=False,
+            disabled=True,
+            help="A készlet-export következő fejlesztési lépésként készül el.",
+        )
+        st.checkbox(
+            "Állatok",
+            value=False,
+            disabled=True,
+            help="Az állat-export későbbi fejlesztési lépésként készül el.",
+        )
+
+        selected_farms = [
+            farm_code
+            for farm_code in farms
+            if st.session_state.get(_target_farm_key(farm_code), False)
+        ]
+        st.caption(f"Kijelölt üzemek: {len(selected_farms)}")
+
+        export_enabled = bool(selected_farms) and st.session_state["target_export_subject_autumn"]
+        if st.button(
+            "Export létrehozása",
+            type="primary",
+            use_container_width=True,
+            disabled=not export_enabled or st.session_state["target_export_generating"],
+        ):
+            clear_targeted_export_download()
+            st.session_state["target_export_generating"] = True
+            st.rerun()
+
+        if st.session_state.get("target_export_generating", False):
+            with st.spinner("Az export készül, kérlek várj..."):
+                payload, filename, mime = build_targeted_export_payload(
+                    selected_farms=selected_farms,
+                    template_bundle=template_bundle,
+                    bulk_data=bulk_data,
+                )
+            st.session_state["target_export_download_data"] = payload
+            st.session_state["target_export_download_name"] = filename
+            st.session_state["target_export_download_mime"] = mime
+            st.session_state["target_export_generating"] = False
+            st.success("Az export elkészült, letölthető.")
+
+        download_data = st.session_state.get("target_export_download_data")
+        if download_data:
+            st.download_button(
+                "Export letöltése",
+                data=download_data,
+                file_name=st.session_state["target_export_download_name"],
+                mime=st.session_state["target_export_download_mime"],
+                use_container_width=True,
+            )
+
+    st.divider()
+    if st.button("Bezárás", use_container_width=True):
+        clear_targeted_export_state()
+        st.rerun(scope="app")
+
+
 def main() -> None:
     inject_styles()
     inject_language_hints()
@@ -396,20 +652,61 @@ def main() -> None:
     sheets = template_bundle["sheets"]
     template_summary = summarize_template(template_bundle)
 
+    target_export_available = bool(bulk_data.shape[0]) and "t5_c" in sheets
+    target_export_requested = False
+    if not st.session_state.get("target_export_open", False):
+        target_export_requested = st.sidebar.button(
+            "Célzott export",
+            disabled=not target_export_available,
+            use_container_width=True,
+        )
+
     st.sidebar.subheader("Nézet")
-    farm_code = st.sidebar.selectbox("Üzem", farms, index=0 if farms else None)
+    farm_code = st.sidebar.selectbox(
+        "Üzem",
+        farms,
+        index=0 if farms else None,
+        key="main_farm_code",
+    )
     selected_sheet_name = st.sidebar.selectbox(
         "Munkalap",
         options=list(sheets.keys()),
         format_func=lambda key: f"{key} - {sheets[key].title}",
+        key="main_selected_sheet",
     )
-    filled_only = st.sidebar.checkbox("Csak kitöltött sorok", value=False)
-    closing_only = st.sidebar.checkbox("Kísérleti: csak záró/összesítő sorok", value=False)
-    show_hidden_technical = st.sidebar.checkbox("Rejtett technikai oszlopok megnyitása", value=False)
+    filled_only = st.sidebar.checkbox(
+        "Csak kitöltött sorok",
+        value=False,
+        key="main_filled_only",
+    )
+    closing_only = st.sidebar.checkbox(
+        "Kísérleti: csak záró/összesítő sorok",
+        value=False,
+        key="main_closing_only",
+    )
+    show_hidden_technical = st.sidebar.checkbox(
+        "Rejtett technikai oszlopok megnyitása",
+        value=False,
+        key="main_show_hidden_technical",
+    )
 
     unknown_count = int((bulk_data["sheet_name"] == "").sum())
     if unknown_count:
         st.sidebar.warning(f"{unknown_count} rekordhoz nem találtam sablonmunkalapot.")
+
+    if target_export_requested:
+        open_targeted_export()
+        show_targeted_export_dialog(
+            farms=farms,
+            template_bundle=template_bundle,
+            bulk_data=bulk_data,
+        )
+    elif st.session_state.get("target_export_open", False):
+        show_targeted_export_dialog(
+            farms=farms,
+            template_bundle=template_bundle,
+            bulk_data=bulk_data,
+        )
 
     current_sheet = sheets[selected_sheet_name]
     view_df = build_sheet_view(
