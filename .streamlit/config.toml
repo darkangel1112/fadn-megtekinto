@@ -1,0 +1,9 @@
+[theme]
+base = "dark"
+primaryColor = "#00f7c2"
+backgroundColor = "#06110f"
+secondaryBackgroundColor = "#0b1f1b"
+textColor = "#dbfff8"
+
+[server]
+disconnectedSessionTTL = 1

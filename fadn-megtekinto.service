@@ -1,0 +1,20 @@
+[Unit]
+Description=FADN Megtekintő Streamlit
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=darkangel
+Group=darkangel
+WorkingDirectory=/home/darkangel/webapps/apps/FadnMegtekinto
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/home/darkangel/webapps/apps/FadnMegtekinto/.venv/bin/streamlit run app.py --server.headless true --server.address 127.0.0.1 --server.port 8502 --server.baseUrlPath fadn
+Restart=always
+RestartSec=5
+LimitNOFILE=65536
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
