@@ -12,6 +12,7 @@ import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+from openpyxl.worksheet.table import Table, TableStyleInfo
 
 APP_DIR = Path(__file__).resolve().parent
 SRC_DIR = APP_DIR / "src"
@@ -30,8 +31,10 @@ if str(SRC_DIR) not in sys.path:
 
 from workbook_mapper import (
     attach_sheet_names,
+    build_animal_view,
     build_autumn_sown_view,
     build_sheet_view,
+    build_stock_view,
     list_farms,
     load_bulk_data,
     load_template,
@@ -132,6 +135,9 @@ def inject_styles() -> None:
         .stNumberInput > div > div {
             background: rgba(5, 28, 24, 0.9);
             border-color: rgba(0, 247, 194, 0.22);
+        }
+        div[data-baseweb="menu"] [role="option"] {
+            cursor: pointer !important;
         }
         .stButton > button, .stDownloadButton > button {
             background: linear-gradient(90deg, rgba(0, 247, 194, 0.18), rgba(61, 217, 255, 0.16));
@@ -238,24 +244,25 @@ def inject_language_hints() -> None:
 
 
 def clear_targeted_export_state() -> None:
-    for key in list(st.session_state.keys()):
-        if key.startswith("target_farm_"):
-            st.session_state.pop(key, None)
-
     for key in [
         "target_export_download_data",
         "target_export_download_name",
         "target_export_download_mime",
-        "target_export_subject_autumn",
-        "target_export_open",
-        "target_export_generating",
+        "target_export_error",
     ]:
         st.session_state.pop(key, None)
+    st.session_state["target_export_open"] = False
+    st.session_state["target_export_generating"] = False
 
 
-def open_targeted_export() -> None:
+def open_targeted_export(farms: list[str]) -> None:
     st.session_state["target_export_open"] = True
     st.session_state["target_export_generating"] = False
+    st.session_state["target_export_subject_autumn"] = True
+    st.session_state["target_export_subject_stocks"] = True
+    st.session_state["target_export_subject_animals"] = True
+    for farm_code in farms:
+        st.session_state[_target_farm_key(farm_code)] = False
     clear_targeted_export_download()
 
 
@@ -264,6 +271,7 @@ def clear_targeted_export_download() -> None:
         "target_export_download_data",
         "target_export_download_name",
         "target_export_download_mime",
+        "target_export_error",
     ]:
         st.session_state.pop(key, None)
 
@@ -287,9 +295,10 @@ def read_help_text() -> str:
     return "A súgó szövege még nincs megadva."
 
 
-@st.dialog("Súgó")
+@st.dialog("Súgó", width="large")
 def show_help_dialog() -> None:
-    st.markdown(read_help_text())
+    with st.container(height=620, border=False):
+        st.markdown(read_help_text())
     if st.button("Bezárás", use_container_width=True):
         st.rerun()
 
@@ -415,6 +424,16 @@ def render_header() -> None:
             show_help_dialog()
 
 
+def _sheet_select_label(sheet_key: str, sheet_title: str, max_length: int = 38) -> str:
+    """Keep long worksheet names from reflowing the sidebar select menu."""
+
+    normalized_title = re.sub(r"\s+", " ", str(sheet_title)).strip()
+    full_label = f"{sheet_key} - {normalized_title}"
+    if len(full_label) <= max_length:
+        return full_label
+    return f"{full_label[: max_length - 1].rstrip()}…"
+
+
 def dataframe_to_csv_bytes(dataframe: pd.DataFrame) -> bytes:
     return dataframe.to_csv(index=False).encode("utf-8-sig")
 
@@ -424,71 +443,173 @@ def _safe_farm_filename(farm_code: str) -> str:
     return safe_name or "uzem"
 
 
-def dataframe_to_excel_bytes(dataframe: pd.DataFrame, sheet_name: str) -> bytes:
+def dataframes_to_excel_bytes(
+    sheet_frames: list[tuple[str, pd.DataFrame]],
+) -> bytes:
     output = BytesIO()
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
-        dataframe.to_excel(writer, index=False, sheet_name=sheet_name)
-        worksheet = writer.sheets[sheet_name]
-        worksheet.freeze_panes = "A2"
-        worksheet.auto_filter.ref = worksheet.dimensions
-        worksheet.sheet_view.showGridLines = True
-        worksheet.sheet_properties.tabColor = "00F7C2"
+        for sheet_name, dataframe in sheet_frames:
+            dataframe.to_excel(writer, index=False, sheet_name=sheet_name)
+            worksheet = writer.sheets[sheet_name]
+            worksheet.freeze_panes = "A2"
+            has_data_rows = not dataframe.empty
+            if has_data_rows and sheet_name != "Állatok":
+                worksheet.auto_filter.ref = worksheet.dimensions
+            worksheet.sheet_view.showGridLines = True
+            worksheet.sheet_properties.tabColor = "00F7C2"
 
-        header_fill = PatternFill(fill_type="solid", fgColor="0B4A40")
-        header_font = Font(bold=True, color="DBFFF8")
-        thin_border = Border(
-            left=Side(style="thin", color="B7C9C5"),
-            right=Side(style="thin", color="B7C9C5"),
-            top=Side(style="thin", color="B7C9C5"),
-            bottom=Side(style="thin", color="B7C9C5"),
-        )
-        for row in worksheet.iter_rows():
-            for cell in row:
-                cell.border = thin_border
+            header_fill = PatternFill(fill_type="solid", fgColor="0B4A40")
+            header_font = Font(bold=True, color="DBFFF8")
+            thin_border = Border(
+                left=Side(style="thin", color="B7C9C5"),
+                right=Side(style="thin", color="B7C9C5"),
+                top=Side(style="thin", color="B7C9C5"),
+                bottom=Side(style="thin", color="B7C9C5"),
+            )
+            for row in worksheet.iter_rows():
+                for cell in row:
+                    cell.border = thin_border
 
-        for cell in worksheet[1]:
-            cell.fill = header_fill
-            cell.font = header_font
-            cell.alignment = Alignment(horizontal="center", vertical="center")
+            for cell in worksheet[1]:
+                cell.fill = header_fill
+                cell.font = header_font
+                cell.alignment = Alignment(horizontal="center", vertical="center")
 
-        for column_cells in worksheet.columns:
-            column_letter = column_cells[0].column_letter
-            values = [str(cell.value or "") for cell in column_cells]
-            width = min(max(max(len(value) for value in values) + 2, 12), 42)
-            worksheet.column_dimensions[column_letter].width = width
+            for column_cells in worksheet.columns:
+                column_letter = column_cells[0].column_letter
+                values = [str(cell.value or "") for cell in column_cells]
+                width = min(max(max(len(value) for value in values) + 2, 12), 42)
+                worksheet.column_dimensions[column_letter].width = width
 
-        if "Érték" in dataframe.columns:
-            value_column_index = list(dataframe.columns).index("Érték") + 1
-            for row in worksheet.iter_rows(
-                min_row=2,
-                min_col=value_column_index,
-                max_col=value_column_index,
-            ):
-                row[0].number_format = "0.00"
+            numeric_columns = {
+                column
+                for column in dataframe.columns
+                if column in {
+                    "Érték",
+                    "Záróérték",
+                    "5C záróérték",
+                    "6B zárókészlet",
+                    "Saját készlet",
+                    "Vásárolt készlet",
+                }
+            }
+            for column in numeric_columns:
+                value_column_index = list(dataframe.columns).index(column) + 1
+                for row in worksheet.iter_rows(
+                    min_row=2,
+                    min_col=value_column_index,
+                    max_col=value_column_index,
+                ):
+                    row[0].number_format = "0.00"
+
+            if "Ellenőrzés" in dataframe.columns:
+                status_column_index = list(dataframe.columns).index("Ellenőrzés") + 1
+                for row in worksheet.iter_rows(
+                    min_row=2,
+                    min_col=status_column_index,
+                    max_col=status_column_index,
+                ):
+                    cell = row[0]
+                    cell.alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
+                    if str(cell.value or "").startswith("HIBA"):
+                        cell.fill = PatternFill(fill_type="solid", fgColor="F4CCCC")
+                        cell.font = Font(color="9C0006", bold=True)
+                    else:
+                        cell.fill = PatternFill(fill_type="solid", fgColor="D9EAD3")
+                        cell.font = Font(color="274E13")
+
+            if sheet_name == "Készletek":
+                worksheet.column_dimensions["C"].width = 34
+                worksheet.column_dimensions["F"].width = 34
+                worksheet.column_dimensions["J"].width = 48
+            elif sheet_name == "Állatok":
+                worksheet.column_dimensions["C"].width = 42
+                worksheet.column_dimensions["D"].width = 16
+                if has_data_rows:
+                    animal_table = Table(displayName="tbl_Allatok", ref=worksheet.dimensions)
+                    animal_table.tableStyleInfo = TableStyleInfo(
+                        name="TableStyleMedium2",
+                        showFirstColumn=False,
+                        showLastColumn=False,
+                        showRowStripes=False,
+                        showColumnStripes=False,
+                    )
+                    worksheet.add_table(animal_table)
 
     return output.getvalue()
+
+
+def dataframe_to_excel_bytes(dataframe: pd.DataFrame, sheet_name: str) -> bytes:
+    return dataframes_to_excel_bytes([(sheet_name, dataframe)])
+
+
+def _targeted_export_filename(farm_code: str, subjects: list[str]) -> str:
+    safe_farm = _safe_farm_filename(farm_code)
+    subject_set = set(subjects)
+    if subject_set == {"autumn"}:
+        return f"{safe_farm}_ossszel_vetett_terulet.xlsx"
+    if subject_set == {"stocks"}:
+        return f"{safe_farm}_keszletek.xlsx"
+    if subject_set == {"animals"}:
+        return f"{safe_farm}_allatok.xlsx"
+    return f"{safe_farm}_celzott_export.xlsx"
 
 
 def build_targeted_export_payload(
     selected_farms: list[str],
     template_bundle: dict,
     bulk_data: pd.DataFrame,
+    subjects: list[str],
 ) -> tuple[bytes, str, str]:
     export_files: list[tuple[str, bytes]] = []
-    autumn_template = template_bundle["sheets"]["t5_c"]
 
     for farm_code in selected_farms:
-        export_df = build_autumn_sown_view(
-            dataframe=bulk_data,
-            template=autumn_template,
-            farm_code=farm_code,
+        sheet_frames: list[tuple[str, pd.DataFrame]] = []
+        if "autumn" in subjects:
+            autumn_template = template_bundle["sheets"]["t5_c"]
+            sheet_frames.append(
+                (
+                    "Ősszel vetett terület",
+                    build_autumn_sown_view(
+                        dataframe=bulk_data,
+                        template=autumn_template,
+                        farm_code=farm_code,
+                    ),
+                )
+            )
+
+        if "stocks" in subjects:
+            sheet_frames.append(
+                (
+                    "Készletek",
+                    build_stock_view(
+                        dataframe=bulk_data,
+                        template_5c=template_bundle["sheets"]["t5_c"],
+                        template_6b=template_bundle["sheets"]["t6_b"],
+                        farm_code=farm_code,
+                    ),
+                )
+            )
+
+        if "animals" in subjects:
+            sheet_frames.append(
+                (
+                    "Állatok",
+                    build_animal_view(
+                        dataframe=bulk_data,
+                        template=template_bundle["sheets"]["t6_a"],
+                        farm_code=farm_code,
+                    ),
+                )
+            )
+
+        workbook_bytes = dataframes_to_excel_bytes(sheet_frames)
+        export_files.append(
+            (
+                _targeted_export_filename(farm_code, subjects),
+                workbook_bytes,
+            )
         )
-        workbook_bytes = dataframe_to_excel_bytes(
-            dataframe=export_df,
-            sheet_name="Ősszel vetett terület",
-        )
-        filename = f"{_safe_farm_filename(farm_code)}_ossszel_vetett_terulet.xlsx"
-        export_files.append((filename, workbook_bytes))
 
     if len(export_files) == 1:
         filename, workbook_bytes = export_files[0]
@@ -527,7 +648,7 @@ def _clear_all_target_farms(farms: list[str]) -> None:
     clear_targeted_export_download()
 
 
-@st.dialog("Célzott export")
+@st.dialog("Célzott export", width="large")
 def show_targeted_export_dialog(
     farms: list[str],
     template_bundle: dict,
@@ -535,6 +656,8 @@ def show_targeted_export_dialog(
 ) -> None:
     _initialize_target_farm_state(farms)
     st.session_state.setdefault("target_export_subject_autumn", True)
+    st.session_state.setdefault("target_export_subject_stocks", True)
+    st.session_state.setdefault("target_export_subject_animals", True)
     st.session_state.setdefault("target_export_generating", False)
 
     st.caption("Válaszd ki az üzemeket és az export tárgyát.")
@@ -568,22 +691,45 @@ def show_targeted_export_dialog(
 
     with subject_column:
         st.subheader("Export tárgya")
+        autumn_available = "t5_c" in template_bundle["sheets"]
+        stocks_available = "t5_c" in template_bundle["sheets"] and "t6_b" in template_bundle["sheets"]
+        animals_available = "t6_a" in template_bundle["sheets"]
         st.checkbox(
             "Ősszel vetett terület",
             key="target_export_subject_autumn",
+            disabled=not autumn_available,
             on_change=clear_targeted_export_download,
+            help=(
+                "Az 5C mezei leltárának nem nulla záróértékű vetési sorai kerülnek az "
+                "Ősszel vetett terület munkalapra. A búza sorai külön is megmaradnak, "
+                "és szükség esetén külön összesített Búza sor is készül."
+                if autumn_available
+                else "Az őszi vetett terület exportjához az 5C munkalapnak is be kell töltődnie."
+            ),
         )
         st.checkbox(
             "Készletek",
-            value=False,
-            disabled=True,
-            help="A készlet-export következő fejlesztési lépésként készül el.",
+            key="target_export_subject_stocks",
+            disabled=not stocks_available,
+            on_change=clear_targeted_export_download,
+            help=(
+                "A készletek exportja az 5C és 6B munkalapból készül."
+                if stocks_available
+                else "A készletek exportjához az 5C és 6B munkalapnak is be kell töltődnie."
+            ),
         )
         st.checkbox(
             "Állatok",
-            value=False,
-            disabled=True,
-            help="Az állat-export későbbi fejlesztési lépésként készül el.",
+            key="target_export_subject_animals",
+            disabled=not animals_available,
+            on_change=clear_targeted_export_download,
+            help=(
+                "A 6A munkalap nem nulla záróállományai kerülnek az Állatok "
+                "munkalapra. Az összesítő sorok kimaradnak, a nem nulla, "
+                "tonnában megadott súlysorok megmaradnak."
+                if animals_available
+                else "Az állatok exportjához a 6A munkalapnak is be kell töltődnie."
+            ),
         )
 
         selected_farms = [
@@ -591,9 +737,16 @@ def show_targeted_export_dialog(
             for farm_code in farms
             if st.session_state.get(_target_farm_key(farm_code), False)
         ]
+        selected_subjects = []
+        if st.session_state["target_export_subject_autumn"] and autumn_available:
+            selected_subjects.append("autumn")
+        if st.session_state["target_export_subject_stocks"] and stocks_available:
+            selected_subjects.append("stocks")
+        if st.session_state["target_export_subject_animals"] and animals_available:
+            selected_subjects.append("animals")
         st.caption(f"Kijelölt üzemek: {len(selected_farms)}")
 
-        export_enabled = bool(selected_farms) and st.session_state["target_export_subject_autumn"]
+        export_enabled = bool(selected_farms) and bool(selected_subjects)
         if st.button(
             "Export létrehozása",
             type="primary",
@@ -605,17 +758,26 @@ def show_targeted_export_dialog(
             st.rerun()
 
         if st.session_state.get("target_export_generating", False):
-            with st.spinner("Az export készül, kérlek várj..."):
-                payload, filename, mime = build_targeted_export_payload(
-                    selected_farms=selected_farms,
-                    template_bundle=template_bundle,
-                    bulk_data=bulk_data,
-                )
-            st.session_state["target_export_download_data"] = payload
-            st.session_state["target_export_download_name"] = filename
-            st.session_state["target_export_download_mime"] = mime
-            st.session_state["target_export_generating"] = False
-            st.success("Az export elkészült, letölthető.")
+            try:
+                with st.spinner("Az export készül, kérlek várj..."):
+                    payload, filename, mime = build_targeted_export_payload(
+                        selected_farms=selected_farms,
+                        template_bundle=template_bundle,
+                        bulk_data=bulk_data,
+                        subjects=selected_subjects,
+                    )
+            except ValueError as error:
+                st.session_state["target_export_generating"] = False
+                st.session_state["target_export_error"] = str(error)
+            else:
+                st.session_state["target_export_download_data"] = payload
+                st.session_state["target_export_download_name"] = filename
+                st.session_state["target_export_download_mime"] = mime
+                st.session_state["target_export_generating"] = False
+                st.success("Az export elkészült, letölthető.")
+
+        if st.session_state.get("target_export_error"):
+            st.error(st.session_state["target_export_error"])
 
         download_data = st.session_state.get("target_export_download_data")
         if download_data:
@@ -652,7 +814,9 @@ def main() -> None:
     sheets = template_bundle["sheets"]
     template_summary = summarize_template(template_bundle)
 
-    target_export_available = bool(bulk_data.shape[0]) and "t5_c" in sheets
+    target_export_available = bool(bulk_data.shape[0]) and any(
+        sheet_name in sheets for sheet_name in ("t5_c", "t6_b", "t6_a")
+    )
     target_export_requested = False
     if not st.session_state.get("target_export_open", False):
         target_export_requested = st.sidebar.button(
@@ -671,7 +835,7 @@ def main() -> None:
     selected_sheet_name = st.sidebar.selectbox(
         "Munkalap",
         options=list(sheets.keys()),
-        format_func=lambda key: f"{key} - {sheets[key].title}",
+        format_func=lambda key: _sheet_select_label(key, sheets[key].title),
         key="main_selected_sheet",
     )
     filled_only = st.sidebar.checkbox(
@@ -693,20 +857,6 @@ def main() -> None:
     unknown_count = int((bulk_data["sheet_name"] == "").sum())
     if unknown_count:
         st.sidebar.warning(f"{unknown_count} rekordhoz nem találtam sablonmunkalapot.")
-
-    if target_export_requested:
-        open_targeted_export()
-        show_targeted_export_dialog(
-            farms=farms,
-            template_bundle=template_bundle,
-            bulk_data=bulk_data,
-        )
-    elif st.session_state.get("target_export_open", False):
-        show_targeted_export_dialog(
-            farms=farms,
-            template_bundle=template_bundle,
-            bulk_data=bulk_data,
-        )
 
     current_sheet = sheets[selected_sheet_name]
     view_df = build_sheet_view(
@@ -797,6 +947,20 @@ def main() -> None:
             (bulk_data["akod"] == farm_code) & (bulk_data["sheet_name"] == current_sheet.sheet_name)
         ].copy()
         st.dataframe(raw_df, use_container_width=True, height=620)
+
+    if target_export_requested:
+        open_targeted_export(farms)
+        show_targeted_export_dialog(
+            farms=farms,
+            template_bundle=template_bundle,
+            bulk_data=bulk_data,
+        )
+    elif st.session_state.get("target_export_open", False):
+        show_targeted_export_dialog(
+            farms=farms,
+            template_bundle=template_bundle,
+            bulk_data=bulk_data,
+        )
 
 
 if __name__ == "__main__":

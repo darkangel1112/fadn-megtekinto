@@ -50,6 +50,18 @@ AUTUMN_SOWN_LABELS = {
     "m5430": "Tavaszi vetések előkészítése",
 }
 
+STOCK_5C_TO_6B_PREFIX = {
+    "m55": "m64",
+    "m56": "m65",
+    "m57": "m66",
+    "m58": "m67",
+}
+STOCK_5C_PREFIXES = tuple(STOCK_5C_TO_6B_PREFIX)
+STOCK_6B_PREFIXES = tuple(STOCK_5C_TO_6B_PREFIX.values())
+STOCK_5C_CLOSING_COLUMN = "5"
+STOCK_6B_CLOSING_COLUMN = "12"
+ANIMAL_CLOSING_COLUMN = "12"
+
 
 @dataclass(frozen=True)
 class SheetTemplate:
@@ -419,6 +431,242 @@ def build_autumn_sown_view(
                     "Érték": round(sum(wheat_values.values()), 2),
                 }
             )
+
+    return pd.DataFrame(records, columns=columns)
+
+
+def _is_stock_summary_row(row_title: str) -> bool:
+    normalized = _clean(row_title).casefold()
+    return "összesen" in normalized or "mindösszesen" in normalized
+
+
+def _stock_code_is_in_family(row_code: str, prefixes: tuple[str, ...]) -> bool:
+    return any(_clean(row_code).startswith(prefix) for prefix in prefixes)
+
+
+def _map_stock_5c_code_to_6b(row_code: str) -> str | None:
+    cleaned = _clean(row_code)
+    for source_prefix, target_prefix in STOCK_5C_TO_6B_PREFIX.items():
+        if cleaned.startswith(source_prefix):
+            return f"{target_prefix}{cleaned[len(source_prefix):]}"
+    return None
+
+
+def _stock_closing_lookup(
+    dataframe: pd.DataFrame,
+    farm_code: str,
+) -> dict[tuple[str, str], float]:
+    source_rows = dataframe[
+        (dataframe["akod"] == farm_code)
+        & dataframe["osz"].isin(
+            {STOCK_5C_CLOSING_COLUMN, STOCK_6B_CLOSING_COLUMN}
+        )
+    ].copy()
+    if source_rows.empty:
+        return {}
+
+    source_rows["_parsed_value"] = (
+        source_rows["ertek"].map(_parse_export_number).fillna(0.0)
+    )
+    grouped = source_rows.groupby(["sor", "osz"])["_parsed_value"].sum()
+    return {
+        (_clean(row_code), _clean(column_code)): round(float(value), 2)
+        for (row_code, column_code), value in grouped.items()
+    }
+
+
+def build_stock_view(
+    dataframe: pd.DataFrame,
+    template_5c: SheetTemplate,
+    template_6b: SheetTemplate,
+    farm_code: str,
+) -> pd.DataFrame:
+    """Build the targeted stock export from 5C and 6B closing quantities.
+
+    The 5C-to-6B relationship is derived from the intentional code-family
+    rule. Summary rows are excluded before matching. A detailed 5C row without
+    its derived 6B counterpart is treated as a template error rather than
+    being silently omitted.
+    """
+
+    columns = [
+        "Partner azonosító",
+        "5C RowCode",
+        "5C megnevezés",
+        "5C záróérték",
+        "6B RowCode",
+        "6B megnevezés",
+        "6B zárókészlet",
+        "Saját készlet",
+        "Vásárolt készlet",
+        "Ellenőrzés",
+    ]
+
+    rows_5c = {
+        row["row_code"]: row
+        for row in template_5c.rows
+        if _stock_code_is_in_family(row["row_code"], STOCK_5C_PREFIXES)
+        and not _is_stock_summary_row(row["row_title"])
+    }
+    rows_6b = {
+        row["row_code"]: row
+        for row in template_6b.rows
+        if _stock_code_is_in_family(row["row_code"], STOCK_6B_PREFIXES)
+        and not _is_stock_summary_row(row["row_title"])
+    }
+
+    missing_6b_pairs = [
+        row_code
+        for row_code in rows_5c
+        if _map_stock_5c_code_to_6b(row_code) not in rows_6b
+    ]
+    if missing_6b_pairs:
+        missing_text = ", ".join(missing_6b_pairs)
+        raise ValueError(
+            "A készlet-exporthoz részletes 5C sorhoz nem található 6B pár "
+            f"a kódszabály alapján: {missing_text}."
+        )
+
+    closing_values = _stock_closing_lookup(dataframe, farm_code)
+    records: list[dict[str, Any]] = []
+    paired_6b_codes: set[str] = set()
+
+    for row_code_5c, row_5c in rows_5c.items():
+        row_code_6b = _map_stock_5c_code_to_6b(row_code_5c)
+        if row_code_6b is None:
+            continue
+
+        row_6b = rows_6b[row_code_6b]
+        paired_6b_codes.add(row_code_6b)
+        own_source = closing_values.get(
+            (row_code_5c, STOCK_5C_CLOSING_COLUMN),
+            0.0,
+        )
+        total_stock = closing_values.get(
+            (row_code_6b, STOCK_6B_CLOSING_COLUMN),
+            0.0,
+        )
+
+        if own_source == 0 and total_stock == 0:
+            continue
+
+        if total_stock < own_source:
+            own_stock = 0.0
+            purchased_stock = 0.0
+            status = "HIBA: a 6B zárókészlet kisebb az 5C saját készletnél"
+        else:
+            own_stock = own_source
+            purchased_stock = round(total_stock - own_source, 2)
+            status = "Rendben"
+
+        records.append(
+            {
+                "Partner azonosító": farm_code,
+                "5C RowCode": row_code_5c,
+                "5C megnevezés": row_5c["row_title"],
+                "5C záróérték": own_source,
+                "6B RowCode": row_code_6b,
+                "6B megnevezés": row_6b["row_title"],
+                "6B zárókészlet": total_stock,
+                "Saját készlet": own_stock,
+                "Vásárolt készlet": purchased_stock,
+                "Ellenőrzés": status,
+            }
+        )
+
+    for row_code_6b, row_6b in rows_6b.items():
+        if row_code_6b in paired_6b_codes:
+            continue
+
+        total_stock = closing_values.get(
+            (row_code_6b, STOCK_6B_CLOSING_COLUMN),
+            0.0,
+        )
+        if total_stock == 0:
+            continue
+
+        records.append(
+            {
+                "Partner azonosító": farm_code,
+                "5C RowCode": None,
+                "5C megnevezés": None,
+                "5C záróérték": None,
+                "6B RowCode": row_code_6b,
+                "6B megnevezés": row_6b["row_title"],
+                "6B zárókészlet": total_stock,
+                "Saját készlet": 0.0,
+                "Vásárolt készlet": total_stock,
+                "Ellenőrzés": "Rendben – csak 6B-ben szerepel",
+            }
+        )
+
+    return pd.DataFrame(records, columns=columns)
+
+
+def _animal_unit(row_code: str, row_title: str) -> str:
+    normalized_title = _clean(row_title).casefold()
+    if "t-ban" in normalized_title:
+        return "t"
+    if _clean(row_code) == "m6323":
+        return "család"
+    return "db"
+
+
+def build_animal_view(
+    dataframe: pd.DataFrame,
+    template: SheetTemplate,
+    farm_code: str,
+) -> pd.DataFrame:
+    """Build the targeted 6A animal export from non-zero closing values.
+
+    The 6A sheet contains movements in several osz columns. Only osz=12
+    (closing stock) is relevant here. Summary rows are intentionally omitted,
+    while non-zero companion rows labelled ``előző sor t-ban`` are retained
+    because they contain the closing weight of the preceding animal row.
+    """
+
+    columns = [
+        "Üzemkód",
+        "RowCode",
+        "Sor megnevezése",
+        "Mértékegység",
+        "Záróérték",
+    ]
+    sheet_rows = dataframe[
+        (dataframe["akod"] == farm_code)
+        & (dataframe["sheet_name"] == template.sheet_name)
+        & (dataframe["osz"] == ANIMAL_CLOSING_COLUMN)
+    ].copy()
+    if sheet_rows.empty:
+        return pd.DataFrame(columns=columns)
+
+    closing_values = (
+        sheet_rows.assign(_parsed_value=sheet_rows["ertek"].map(_parse_export_number))
+        .dropna(subset=["_parsed_value"])
+        .groupby("sor")["_parsed_value"]
+        .sum()
+    )
+
+    records: list[dict[str, Any]] = []
+    for template_row in template.rows:
+        row_code = template_row["row_code"]
+        row_title = template_row["row_title"]
+        if _is_stock_summary_row(row_title):
+            continue
+
+        value = closing_values.get(row_code)
+        if value is None or abs(float(value)) < 1e-12:
+            continue
+
+        records.append(
+            {
+                "Üzemkód": farm_code,
+                "RowCode": row_code,
+                "Sor megnevezése": row_title,
+                "Mértékegység": _animal_unit(row_code, row_title),
+                "Záróérték": round(float(value), 2),
+            }
+        )
 
     return pd.DataFrame(records, columns=columns)
 

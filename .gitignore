@@ -11,3 +11,9 @@ build/
 # Sync script (tartalmaz tokent)
 sync.sh
 sync.log
+
+# Helyi vagy érzékeny forrás- és tesztadatok
+*.xlsx
+*.xlsm
+*.xls
+*.csv

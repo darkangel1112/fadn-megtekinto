@@ -12,11 +12,14 @@ A FADN Megtekintő az ömlesztett Excel-exportot a táblázatos sablon alapján 
 4. Ha kell, kapcsold be a szűréseket vagy a technikai oszlopok megjelenítését.
 5. Az aktuális nézet CSV-be le is tölthető.
 
+Az elfogadott forrásfájlok kiterjesztése: `.xlsx`, `.xlsm` vagy `.xls`. A két fájlnak ugyanahhoz az adatállapothoz és sablonverzióhoz kell tartoznia.
+
 ## Célzott export
 
 A bal oldali sávban a feltöltött ömlesztett és sablonfájl után megjelenik a Célzott export gomb.
 
 - Válaszd ki az exportálandó üzemeket.
+- Az aktív exporttárgyak alapból ki vannak jelölve; amelyik nem kell, annak a jelölését vedd ki.
 - Az első elérhető export az ősszel vetett terület a 5C táblából.
 - Az export tartalmazza a mezei leltár összesítő és releváns vetési sorait, köztük az m5430 „Tavaszi vetések előkészítése” sort is.
 - Csak a nem üres és nem nulla záró értékű sorok kerülnek bele.
@@ -24,8 +27,20 @@ A bal oldali sávban a feltöltött ömlesztett és sablonfájl után megjelenik
 - Egy üzem esetén egy Excel-fájl, több üzem esetén üzemenként külön Excel-fájl ZIP-csomagban tölthető le.
 - Az exportált értékek numerikusak, két tizedessel jelennek meg.
 - A célzott export ablaka az elkészítés és a letöltés után is nyitva marad, és csak a Bezárás gombbal zárható be.
+- A „Készletek” export az 5C és 6B zárókészleteit külön `Készletek` munkalapon kapcsolja össze.
+- A készlet-párosítás az `mXXXX` kódszabály alapján történik, az összesítő sorok nélkül.
+- A `6B - 5C` különbözet vásárolt készletként jelenik meg, a csak 6B-ben szereplő készletsorok is bekerülnek.
+- Az „Állatok” export a 6A munkalap nem nulla záróállományait (`osz = 12`) külön `Állatok` munkalapra teszi.
+- Az állat-export oszlopai: `Üzemkód`, `RowCode`, `Sor megnevezése`, `Mértékegység`, `Záróérték`.
+- A 6A összesítő sorai kimaradnak, a nem nulla `előző sor t-ban` súlysorok viszont megmaradnak.
+- A ló-, hal- és egyéb állatsorok is bekerülnek, ha a sablonban szerepelnek és van nem nulla záróértékük.
+- A normál állatlétszám `db`, a súlysor `t`, a méhcsaládok `család` mértékegységet kapnak.
+- Ha egy kiválasztott exporttárgyhoz nincs nem nulla adat, a munkalap csak fejléccel készül; üres Excel-tábla és üres szűrő nem kerül rá.
+- A célzott export dialog szélesebb változatban jelenik meg, hogy az üzemlista és az exporttárgyak kényelmesebben elférjenek.
+- Az exporttárgyak melletti kérdőjel rövid magyarázatot ad az adott export tartalmáról.
+- A súgóablak szélesebb, saját görgetősávval rendelkezik, a fejléc pedig görgetés közben is látható marad.
 
 ## Fontos
 
-- A feltöltött fájlok nem kerülnek tartós tárolásra.
-- Az ablak bezárásával minden feltöltött adat törlődik.
+- A feltöltött fájlok nem kerülnek tartós alkalmazás-adattárba.
+- Az adatok az aktuális munkamenetben élnek; a források törlése vagy a munkamenet megszűnése után nem maradnak elérhetők.
