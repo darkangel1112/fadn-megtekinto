@@ -45,6 +45,7 @@ Az egészségügyi végpont elvárt válasza: `ok`.
 ### Dialog és állapotmegőrzés
 
 - [ ] A dialog csak a célzott export gombra kattintva jelenik meg.
+- [ ] A Célzott export gomb a dialog megnyitása, az export elkészítése és a letöltés alatt is látható marad.
 - [ ] A fő üzem-, munkalap- és szűrőállapot megmarad a dialog megnyitásakor.
 - [ ] A dialog bezárása után a fő tábla változatlan marad.
 - [ ] Az export létrehozása alatt spinner látható.
@@ -57,6 +58,7 @@ Az egészségügyi végpont elvárt válasza: `ok`.
 - [ ] A célzott export dialog az előző változathoz képest szélesebb, nagy méretű változatban jelenik meg.
 - [ ] A súgó dialog szélesebb, a tartalma saját görgetősávval görgethető, a „Súgó” fejléc látható marad.
 - [ ] A célzott export dialog bezárása után az első munkalapváltás azonnal frissíti a fő táblát.
+- [ ] A dialog bezárása a Bezárás gombbal, a jobb felső `×`-szel és az Esc billentyűvel is visszaállítja a fő nézetet.
 
 ### 5C export
 

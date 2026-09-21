@@ -648,7 +648,11 @@ def _clear_all_target_farms(farms: list[str]) -> None:
     clear_targeted_export_download()
 
 
-@st.dialog("Célzott export", width="large")
+@st.dialog(
+    "Célzott export",
+    width="large",
+    on_dismiss=clear_targeted_export_state,
+)
 def show_targeted_export_dialog(
     farms: list[str],
     template_bundle: dict,
@@ -817,13 +821,11 @@ def main() -> None:
     target_export_available = bool(bulk_data.shape[0]) and any(
         sheet_name in sheets for sheet_name in ("t5_c", "t6_b", "t6_a")
     )
-    target_export_requested = False
-    if not st.session_state.get("target_export_open", False):
-        target_export_requested = st.sidebar.button(
-            "Célzott export",
-            disabled=not target_export_available,
-            use_container_width=True,
-        )
+    target_export_requested = st.sidebar.button(
+        "Célzott export",
+        disabled=not target_export_available,
+        use_container_width=True,
+    )
 
     st.sidebar.subheader("Nézet")
     farm_code = st.sidebar.selectbox(

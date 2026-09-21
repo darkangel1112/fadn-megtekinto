@@ -103,7 +103,7 @@ A fő nézet vezérlői stabil kulcsokat használnak:
 - `main_closing_only`;
 - `main_show_hidden_technical`.
 
-Ez fontos, mert a célzott export dialog fragmentként működik, és bezáráskor újrarenderelés történik. A célzott export megnyitását a fő nézet és annak táblázata után kell végrehajtani, hogy a dialog bezárása után a munkalapválasztás és a fő tábla ugyanabban a teljes alkalmazás-újrarenderelésben frissüljön.
+Ez fontos, mert a célzott export dialog fragmentként működik, és bezáráskor újrarenderelés történik. A célzott export gomb a dialog mögött is kirajzolva marad, a `on_dismiss` callback pedig a gomb- és exportállapotot a Bezárás, a jobb felső `×` és az Esc bezárásakor is törli. A célzott export megnyitását a fő nézet és annak táblázata után kell végrehajtani, hogy a dialog bezárása után a munkalapválasztás és a fő tábla ugyanabban a teljes alkalmazás-újrarenderelésben frissüljön.
 
 ## Bővítési pontok
 

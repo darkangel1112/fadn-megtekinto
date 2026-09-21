@@ -15,6 +15,8 @@ A dialogban:
 - az export elkészítése közben spinner jelenik meg;
 - az elkészült kimenet ugyanabban a dialogban tölthető le;
 - a dialog a letöltés után is nyitva marad.
+- a Célzott export gomb a dialog mögött végig látható marad;
+- a Bezárás gomb, a jobb felső `×` és az Esc billentyű bezárása is törli a dialog állapotát.
 - ha egy kiválasztott exporttárgyhoz az adott üzemben nincs nem nulla adat, a munkalap fejlécével megmarad, de üres Excel-tábla és üres AutoFilter nem kerül rá;
 - a súgó nagyobb, belső görgethető tartalomterületet használ, így a súgó fejléce látható marad.
 

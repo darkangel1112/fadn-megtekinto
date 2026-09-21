@@ -26,7 +26,8 @@ A bal oldali sávban a feltöltött ömlesztett és sablonfájl után megjelenik
 - A búza külön sorai megmaradnak, és ha legalább az egyik értékes, egy összesített Búza sor is készül.
 - Egy üzem esetén egy Excel-fájl, több üzem esetén üzemenként külön Excel-fájl ZIP-csomagban tölthető le.
 - Az exportált értékek numerikusak, két tizedessel jelennek meg.
-- A célzott export ablaka az elkészítés és a letöltés után is nyitva marad, és csak a Bezárás gombbal zárható be.
+- A célzott export gomb a dialog megnyitása és az export elkészítése közben is látható marad a bal oldali sávban.
+- A célzott export ablaka az elkészítés és a letöltés után is nyitva marad; a Bezárás gomb, a jobb felső `×` és az Esc billentyű is szabályosan bezárja.
 - A „Készletek” export az 5C és 6B zárókészleteit külön `Készletek` munkalapon kapcsolja össze.
 - A készlet-párosítás az `mXXXX` kódszabály alapján történik, az összesítő sorok nélkül.
 - A `6B - 5C` különbözet vásárolt készletként jelenik meg, a csak 6B-ben szereplő készletsorok is bekerülnek.

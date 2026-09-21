@@ -1,5 +1,11 @@
 # Változásnapló
 
+## 2026-09-21 – Célzott export gomb állapotkezelése
+
+- a Célzott export gomb a dialog megnyitása és az export elkészítése közben is látható marad;
+- a jobb felső `×`-szel vagy Esc billentyűvel történő bezárás is törli a dialog állapotát;
+- a gomb eltűnéséből adódó félrevezető főnézeti állapot megszűnik.
+
 ## 2026-09-21 – Üres célzott exportlapok kezelése
 
 - az üres mezei leltár-, készlet- és állat-exportlapok fejléc-only munkalapként készülnek;
