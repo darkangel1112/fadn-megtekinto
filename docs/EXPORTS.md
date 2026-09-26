@@ -18,6 +18,7 @@ A dialogban:
 - a Célzott export gomb a dialog mögött végig látható marad;
 - a Bezárás gomb, a jobb felső `×` és az Esc billentyű bezárása is törli a dialog állapotát.
 - ha egy kiválasztott exporttárgyhoz az adott üzemben nincs nem nulla adat, a munkalap fejlécével megmarad, de üres Excel-tábla és üres AutoFilter nem kerül rá;
+- kivétel a `Támogatási jogcímek` lap: a teljes rögzített jogcímlistát akkor is kiírja, ha nincs forrásérték;
 - a súgó nagyobb, belső görgethető tartalomterületet használ, így a súgó fejléce látható marad.
 
 ## Aktív export: 5C mezei leltár
@@ -286,6 +287,79 @@ Ha csak az Állatok export van kiválasztva, egy üzem esetén:
 
 ```text
 <uzemkod>_allatok.xlsx
+```
+
+Több üzem vagy több exporttárgy esetén az általános célzott export fájlnév- és ZIP-szabály érvényesül.
+
+## Aktív export: Támogatási jogcímek – t7_c és t7_b1
+
+### Forrás és értelmezés
+
+- az AKG-, erdészeti és Natura 2000 erdőösszegek forrása a `t7_c`, `osz = 3`;
+- a fiatal gazdálkodók CIS-YF összege a `t7_b1`, `osz = 4` (`eFt`); az `osz = 3` egységadat nem pénzösszeg, ezért nem kerül felhasználásra;
+- a forrás pénzösszegei eFt-ban vannak, a kimenet Ft-ra váltja őket (`eFt × 1 000`);
+- az éves területalapú támogatás és az állattenyésztési adatok nem részei ennek a lapnak;
+- minden kiválasztott üzemben ugyanaz a fix jogcímlista szerepel, a forrásbeli üres és nulla értékektől függetlenül.
+
+### Jogcím- és sorkódmapping
+
+| Célűrlap-jogcím | FADN-sorkód | Forráslap / osz | Megjegyzés |
+| --- | --- | --- | --- |
+| Agrár-környezetgazdálkodási program | `m7094` | `t7_c / 3` | AKG összesítő |
+| Szántó | `m7080` | `t7_c / 3` | Szántó összesítő |
+| Horizontális szántó | `m70801` | `t7_c / 3` | Részjogcím |
+| Horizontális szántó – Talajmegújító gazdálkodás szántó | `m70802` | `t7_c / 3` | A forrássor megnevezése strip tillre, sávos művelésre utal; a célűrlappal való megfeleltetés nem szó szerinti. |
+| Szántó – Talajmegújító – no-till | `m70803` | `t7_c / 3` | Részjogcím |
+| Natura 2000 szántó | `m70804` | `t7_c / 3` | Részjogcím |
+| MTÉT Túzokvédelmi szántó | `m70805` | `t7_c / 3` | Részjogcím |
+| MTÉT Madárvédelmi szántó | `m70806` | `t7_c / 3` | Részjogcím |
+| MTÉT Kék vércse védelmi szántó | `m70807` | `t7_c / 3` | Részjogcím |
+| Gyep | `m7082` | `t7_c / 3` | Gyep összesítő |
+| Horizontális gyep | `m70821` | `t7_c / 3` | Részjogcím |
+| MTÉT alföldi madárvédelmi | `m70822` | `t7_c / 3` | Részjogcím |
+| MTÉT túzokvédelmi | `m70823` | `t7_c / 3` | Részjogcím |
+| MTÉT hegy- és dombvidéki madárvédelmi | `m70824` | `t7_c / 3` | Részjogcím |
+| MTÉT nappal lepke védelmi | `m70825` | `t7_c / 3` | Részjogcím |
+| MTÉT gyeprezervátum | `m70826` | `t7_c / 3` | Részjogcím |
+| Ültetvény | `m7084` | `t7_c / 3` | Ültetvény összesítő |
+| Ültetvény – intenzív | `m70841` | `t7_c / 3` | Részjogcím |
+| Ültetvény – extenzív | `m70842` | `t7_c / 3` | Részjogcím |
+| Ültetvény – szőlő | `m70843` | `t7_c / 3` | Részjogcím |
+| Horizontális nádas | `m7086` | `t7_c / 3` | Részjogcím |
+| Erdőgazdálkodás támogatása | `m7215` | `t7_c / 3` | Mezőgazdasági területek első erdősítésére adott támogatás; külön forráskódsoron marad. |
+| Erdőgazdálkodás támogatása | `m7216` | `t7_c / 3` | Egyéb erdészeti támogatások. |
+| Natura 2000 erdő | `m7212` | `t7_c / 3` | Natura 2000 erdőre adott támogatás. |
+| Kistermelői támogatási rendszer | – | – | Nem találtunk hozzá külön FADN-sorkódot; nem kap kitalált értéket vagy kódot. |
+| Fiatal mezőgazdasági termelők támogatása (FIG) | `m7407` | `t7_b1 / 4` | Fiatal gazdálkodók támogatása (CIS-YF). |
+
+Az `m7213` és `m7240` külön fiatalgazda-induló támogatási kódok, ezért nem olvadnak be automatikusan az `m7407` CIS-YF sorába. A célűrlap erdőgazdálkodási sorához tartozó `m7215` és `m7216` külön sorban marad, hogy a forráskódok ellenőrizhetők legyenek.
+
+### Kimeneti munkalap és oszlopok
+
+```text
+Támogatási jogcímek
+```
+
+| Oszlop | Tartalom |
+| --- | --- |
+| `Üzemkód` | a kiválasztott üzem azonosítója |
+| `Célűrlap jogcíme` | a célűrlap szerinti jogcím megnevezése |
+| `FADN-sorkód` | a forrássablon sorazonosítója |
+| `FADN-megnevezés` | a forrássablon eredeti sorneve |
+| `Összeg (Ft)` | numerikus forintösszeg; forrás eFt érték × 1 000 |
+| `Sor jellege` | `Összesítő` vagy `Jogcím`; az összesítők nem adhatók hozzá a részjogcímekhez |
+| `Adatállapot` | forrásérték, nulla, üres forrásérték, hiányzó forrássor vagy hiányzó sorkód jelzése |
+
+Az üres forrásértékhez numerikus `0` kerül, és az `Adatállapot` megkülönbözteti ezt a tényleges forrásbeli nullától. Ha a sablonban vagy a forrásadatban hiányzik a kód, az összeg cellája üres marad, és a státusz jelzi az okot. A kistermelői támogatás ezért szerepel a fix listában, de üres összeggel és `Nincs azonosított FADN-sorkód` állapottal.
+
+Az AKG összesítő sorai (`m7094`, `m7080`, `m7082`, `m7084`) ellenőrzésre szolgálnak. Ne add őket hozzá a részjogcímek összegéhez. A lapon valódi numerikus összegek, egész Ft megjelenítés, fejlécszűrő, rögzített fejléc és az export többi lapjához illeszkedő formázás készül.
+
+Ha mind az öt exporttárgy ki van jelölve, a támogatási lap az ötödik munkalap. Ha egy korábbi exporttárgy nincs kiválasztva, a lap ennek megfelelően előrébb kerül.
+
+Egy üzem esetén, ha csak ez az export van kiválasztva:
+
+```text
+<uzemkod>_tamogatasi_jogcimek.xlsx
 ```
 
 Több üzem vagy több exporttárgy esetén az általános célzott export fájlnév- és ZIP-szabály érvényesül.

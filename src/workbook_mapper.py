@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from io import BytesIO
+import math
 from pathlib import Path
 from typing import Any
 import re
@@ -61,6 +62,59 @@ STOCK_6B_PREFIXES = tuple(STOCK_5C_TO_6B_PREFIX.values())
 STOCK_5C_CLOSING_COLUMN = "5"
 STOCK_6B_CLOSING_COLUMN = "12"
 ANIMAL_CLOSING_COLUMN = "12"
+
+SUPPORT_EXPORT_ITEMS = (
+    ("Agrár-környezetgazdálkodási program", "m7094", "t7_c", "3", "Összesítő"),
+    ("Szántó", "m7080", "t7_c", "3", "Összesítő"),
+    ("Horizontális szántó", "m70801", "t7_c", "3", "Jogcím"),
+    (
+        "Horizontális szántó – Talajmegújító gazdálkodás szántó",
+        "m70802",
+        "t7_c",
+        "3",
+        "Jogcím",
+    ),
+    ("Szántó – Talajmegújító – no-till", "m70803", "t7_c", "3", "Jogcím"),
+    ("Natura 2000 szántó", "m70804", "t7_c", "3", "Jogcím"),
+    ("MTÉT Túzokvédelmi szántó", "m70805", "t7_c", "3", "Jogcím"),
+    ("MTÉT Madárvédelmi szántó", "m70806", "t7_c", "3", "Jogcím"),
+    ("MTÉT Kék vércse védelmi szántó", "m70807", "t7_c", "3", "Jogcím"),
+    ("Gyep", "m7082", "t7_c", "3", "Összesítő"),
+    ("Horizontális gyep", "m70821", "t7_c", "3", "Jogcím"),
+    ("MTÉT alföldi madárvédelmi", "m70822", "t7_c", "3", "Jogcím"),
+    ("MTÉT túzokvédelmi", "m70823", "t7_c", "3", "Jogcím"),
+    ("MTÉT hegy- és dombvidéki madárvédelmi", "m70824", "t7_c", "3", "Jogcím"),
+    ("MTÉT nappal lepke védelmi", "m70825", "t7_c", "3", "Jogcím"),
+    ("MTÉT gyeprezervátum", "m70826", "t7_c", "3", "Jogcím"),
+    ("Ültetvény", "m7084", "t7_c", "3", "Összesítő"),
+    ("Ültetvény – intenzív", "m70841", "t7_c", "3", "Jogcím"),
+    ("Ültetvény – extenzív", "m70842", "t7_c", "3", "Jogcím"),
+    ("Ültetvény – szőlő", "m70843", "t7_c", "3", "Jogcím"),
+    ("Horizontális nádas", "m7086", "t7_c", "3", "Jogcím"),
+    (
+        "Erdőgazdálkodás támogatása",
+        "m7215",
+        "t7_c",
+        "3",
+        "Jogcím",
+    ),
+    (
+        "Erdőgazdálkodás támogatása",
+        "m7216",
+        "t7_c",
+        "3",
+        "Jogcím",
+    ),
+    ("Natura 2000 erdő", "m7212", "t7_c", "3", "Jogcím"),
+    ("Kistermelői támogatási rendszer", "", "", "", "Jogcím"),
+    (
+        "Fiatal mezőgazdasági termelők támogatása (FIG)",
+        "m7407",
+        "t7_b1",
+        "4",
+        "Jogcím",
+    ),
+)
 
 
 @dataclass(frozen=True)
@@ -395,7 +449,7 @@ def build_land_view(
     return export_view[columns].reset_index(drop=True)
 
 
-def _parse_export_number(value: Any) -> float | None:
+def _parse_export_number(value: Any, zero_as_missing: bool = True) -> float | None:
     text = _clean(value)
     if not text:
         return None
@@ -417,9 +471,91 @@ def _parse_export_number(value: Any) -> float | None:
     except ValueError:
         return None
 
-    if number == 0:
+    if not math.isfinite(number):
+        return None
+    if number == 0 and zero_as_missing:
         return None
     return round(number, 2)
+
+
+def build_support_view(
+    dataframe: pd.DataFrame,
+    templates: dict[str, SheetTemplate],
+    farm_code: str,
+) -> pd.DataFrame:
+    """Build a fixed support-entitlement list with source amounts in HUF.
+
+    All target-form rows are retained for every farm. Source monetary fields are
+    stored in thousand forints (eFt), so populated values are converted to Ft.
+    Summary rows remain visible and are marked to prevent double counting.
+    """
+
+    columns = [
+        "Üzemkód",
+        "Célűrlap jogcíme",
+        "FADN-sorkód",
+        "FADN-megnevezés",
+        "Összeg (Ft)",
+        "Sor jellege",
+        "Adatállapot",
+    ]
+    records: list[dict[str, Any]] = []
+
+    for target_title, row_code, sheet_name, osz_code, row_type in SUPPORT_EXPORT_ITEMS:
+        source_title = ""
+        amount: float | None = None
+
+        if not row_code:
+            status = "Nincs azonosított FADN-sorkód"
+        elif sheet_name not in templates:
+            status = f"Hiányzik a {sheet_name} forrássablon"
+        else:
+            template = templates[sheet_name]
+            template_row = next(
+                (row for row in template.rows if row["row_code"] == row_code),
+                None,
+            )
+            if template_row is None:
+                status = "A sorkód hiányzik a forrássablonból"
+            else:
+                source_title = template_row["row_title"]
+                matches = dataframe[
+                    (dataframe["akod"] == farm_code)
+                    & (dataframe["sor"] == row_code)
+                    & (dataframe["osz"] == osz_code)
+                    & (dataframe["sheet_name"] == sheet_name)
+                ]
+                if matches.empty:
+                    status = "Nincs forrássor az adatállományban"
+                else:
+                    raw_values = [_clean(value) for value in matches["ertek"]]
+                    populated_values = [value for value in raw_values if value]
+                    parsed_values = [
+                        _parse_export_number(value, zero_as_missing=False)
+                        for value in populated_values
+                    ]
+                    if any(value is None for value in parsed_values):
+                        status = "Nem numerikus forrásérték"
+                    elif not parsed_values:
+                        amount = 0
+                        status = "Nincs kitöltött forrásérték"
+                    else:
+                        amount = round(sum(parsed_values) * 1000, 2)
+                        status = "Forrásban 0" if amount == 0 else "Forrásérték"
+
+        records.append(
+            {
+                "Üzemkód": farm_code,
+                "Célűrlap jogcíme": target_title,
+                "FADN-sorkód": row_code,
+                "FADN-megnevezés": source_title,
+                "Összeg (Ft)": amount,
+                "Sor jellege": row_type,
+                "Adatállapot": status,
+            }
+        )
+
+    return pd.DataFrame(records, columns=columns)
 
 
 def build_autumn_sown_view(

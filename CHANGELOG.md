@@ -1,5 +1,14 @@
 # Változásnapló
 
+## 2026-09-26 – Támogatási jogcímek célzott exportja
+
+- új `Támogatási jogcímek` munkalap minden kiválasztott üzemhez, fix teljes jogcímlistával;
+- AKG, erdészeti és Natura 2000 forráskódok, valamint a fiatal gazdák CIS-YF adatának exportja;
+- eFt összegek átváltása numerikus Ft értékre;
+- összesítők, üres értékek és hiányzó kódok külön jelölése;
+- támogatási munkalap hozzáadása a földterületi lap után, ötödik lapként teljes kijelölés esetén;
+- szintetikus támogatási és földterületi export-regressziós tesztek.
+
 ## 2026-09-25 – t1_a földterületi célzott export
 
 - új „Földterületi adatok” exporttárgy a célzott export dialogban;

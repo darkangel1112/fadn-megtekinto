@@ -108,6 +108,20 @@ Az egészségügyi végpont elvárt válasza: `ok`.
 - [ ] A t1_a export a teljes kijelölt export negyedik munkalapja.
 - [ ] Üres t1_a adat esetén a munkalap csak fejléccel készül, Excel-táblaobjektum és AutoFilter nélkül.
 
+### Támogatási jogcímek export
+
+- [ ] A támogatási export csak akkor választható, ha a `t7_c` és `t7_b1` forrássablon is betöltődött.
+- [ ] Minden kiválasztott üzemnél megjelenik a rögzített teljes jogcímlista, üres vagy nulla érték esetén is.
+- [ ] Az AKG-, erdészeti és Natura 2000 összegek a `t7_c` `osz = 3` értékeit használják.
+- [ ] A CIS-YF `m7407` összege a `t7_b1` `osz = 4` eFt mezőjéből jön, nem az `osz = 3` egységadatból.
+- [ ] Az eFt értékek numerikus Ft összeggé válnak (`× 1 000`) egész Ft megjelenítéssel.
+- [ ] Az AKG összesítő sorok külön `Összesítő` jelölést kapnak, és nem számítódnak hozzá a részjogcímekhez.
+- [ ] A forrásbeli nulla, a kitöltetlen érték, a hiányzó forrássor és az azonosítatlan kód eltérő állapotként jelenik meg.
+- [ ] A kistermelői jogcím kód nélkül is szerepel, de az összege üres marad és ezt az adatállapot jelzi.
+- [ ] Az `m7213` és `m7240` induló támogatási sorok nem olvadnak be az `m7407` CIS-YF sorba.
+- [ ] Ha mind az öt exporttárgy be van jelölve, a `Támogatási jogcímek` az ötödik lap.
+- [ ] A támogatási exporttárgy önmagában is helyes nevű `.xlsx` fájlt ad.
+
 ### Üres célzott exportlapok
 
 - [ ] Üres mezei leltár esetén a munkalap fejléc-only marad, hibajelzés nélkül.
@@ -116,6 +130,10 @@ Az egészségügyi végpont elvárt válasza: `ok`.
 
 ## Automatizált tesztállapot
 
-A repóban jelenleg nincs külön `tests/` könyvtár vagy CI-folyamat. A fejlesztés során statikus ellenőrzés, Streamlit AppTest és valódi forrásfájlokból végzett, repón kívüli ellenőrzés használható, de érzékeny adatot ezekből sem szabad a repóba menteni.
+A repóban nincs CI-folyamat. A `tests/` könyvtár automatizált, szintetikus adatokkal futó célzott export-regressziós teszteket tartalmaz. Futtatás:
 
-Új automatizált tesztek hozzáadásakor szintetikus sablon- és ömlesztett adatot kell létrehozni, amely csak a szükséges sor- és oszlopstruktúrát tartalmazza.
+```powershell
+python -m unittest discover -s tests -v
+```
+
+Érzékeny forrásadat vagy partnerazonosító ne kerüljön a repóba.

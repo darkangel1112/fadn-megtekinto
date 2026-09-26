@@ -19,6 +19,7 @@ Az alkalmazás Streamlit-alapú, és a feltöltött munkafüzetekből dolgozik. 
 - célzott készlet-export az 5C és 6B munkalap alapján;
 - célzott állat-export a 6A munkalap záróállományából;
 - célzott t1_a földterületi export a megjelenítő táblázatos formájában;
+- célzott támogatási jogcím-export AKG- és kapcsolódó támogatási összegekkel;
 - egy üzem esetén egy Excel-fájl, több üzem esetén ZIP-csomag üzemenként külön Excel-fájlokkal;
 - Excel-szűrő, rácsvonal, vékony cellakeret, fejlécformázás és numerikus két tizedes formátum.
 
@@ -120,6 +121,10 @@ A célzott export `Földterületi adatok` munkalapja a `t1_a` sablon minden olya
 - A technikai oszlopok és a sablon üres záró fejléce nem kerülnek bele.
 - Az értékek valódi numerikus Excel-cellák, két tizedes formátummal; az üres értékek üresen maradnak.
 - Ha az adott üzemhez nincs értékes t1_a adat, a munkalap csak fejléccel készül.
+
+## Támogatási jogcímek export röviden
+
+A `Támogatási jogcímek` munkalap a támogatási sablon rögzített jogcímlistáját minden kijelölt üzemnél megjeleníti, akkor is, ha az adatforrásban nincs kitöltött összeg. Az AKG-csoportok összegei ellenőrző összesítőként szerepelnek, nem adhatók hozzá a részjogcímekhez. A forrás eFt összegei Ft-ra átszámítva jelennek meg. A kistermelői támogatásnál nincs azonosított FADN-sorkód; ezt a lap külön jelzi.
 
 ## Adatvédelem és tesztadatok
 

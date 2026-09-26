@@ -47,7 +47,8 @@ Felelős:
 - 5C mezei leltár célzott exportnézetének építése;
 - 5C–6B kódalapú készlet-párosítás és célzott készlet-exportnézet építése;
 - 6A záróállomány-alapú, összesítő sorokat kizáró állat-exportnézet építése.
-- t1_a földterületi exportnézet építése a megjelenítő sorrendje és értékszűrése szerint.
+- t1_a földterületi exportnézet építése a megjelenítő sorrendje és értékszűrése szerint;
+- a rögzített támogatási jogcímlista előállítása a `t7_c` és `t7_b1` forráskódjai alapján, hiányzó értékek jelölésével.
 
 ### `sugo.md`
 
@@ -130,6 +131,12 @@ A `build_stock_view` nem soronként karbantartott párosítási táblát haszná
 A sablon összesítő sorait a megnevezés alapján kiszűri, majd a záróértékeket üzem, sorazonosító és `osz` szerint aggregálja. A számított saját és vásárolt készletet az export dataframe állítja elő. A csak 6B-ben megtalált részletes sorok külön 6B-only rekordként kerülnek az exportba.
 
 Az exportáló réteg egy üzemenkénti munkafüzetbe több kiválasztott munkalapot ír. Több üzem esetén ezeket a munkafüzeteket ZIP-csomagba helyezi.
+
+## Támogatási jogcímek export
+
+A `build_support_view` a támogatási űrlap rögzített sorlistáját állítja elő üzemenként, ezért az üres vagy nulla forrásérték sem tüntet el jogcímet. Az AKG- és erdészeti összegek a `t7_c` `osz = 3` mezőjéből, a fiatal gazdák CIS-YF összege a `t7_b1` `osz = 4` mezőjéből származik. A forrás eFt értékeit a mapper Ft-ra szorozza át. Az AKG összesítő sorok a részjogcímektől megkülönböztetve szerepelnek; összeadásuk a részjogcímekkel kettős elszámolást okozna.
+
+A célűrlapon szereplő kistermelői támogatáshoz nincs azonosított FADN-sorkód. A sor megmarad, de az összege üres és az adatállapot jelzi a hiányzó kódot. A fiatal gazdák induló támogatásának külön `m7213` és `m7240` kódjai nem kerülnek automatikusan a CIS-YF jogcímhez.
 
 ## Állat-export
 

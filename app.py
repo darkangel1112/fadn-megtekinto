@@ -36,6 +36,7 @@ from workbook_mapper import (
     build_land_view,
     build_sheet_view,
     build_stock_view,
+    build_support_view,
     list_farms,
     load_bulk_data,
     load_template,
@@ -494,6 +495,7 @@ def dataframes_to_excel_bytes(
                     "6B zárókészlet",
                     "Saját készlet",
                     "Vásárolt készlet",
+                    "Összeg (Ft)",
                 }
             }
             for column in numeric_columns:
@@ -504,6 +506,18 @@ def dataframes_to_excel_bytes(
                     max_col=value_column_index,
                 ):
                     row[0].number_format = "0.00"
+
+            if sheet_name == "Támogatási jogcímek":
+                amount_column_index = list(dataframe.columns).index("Összeg (Ft)") + 1
+                worksheet.column_dimensions["B"].width = 48
+                worksheet.column_dimensions["D"].width = 56
+                worksheet.column_dimensions["G"].width = 34
+                for row in worksheet.iter_rows(
+                    min_row=2,
+                    min_col=amount_column_index,
+                    max_col=amount_column_index,
+                ):
+                    row[0].number_format = "#,##0"
 
             if "Ellenőrzés" in dataframe.columns:
                 status_column_index = list(dataframe.columns).index("Ellenőrzés") + 1
@@ -557,6 +571,8 @@ def _targeted_export_filename(farm_code: str, subjects: list[str]) -> str:
         return f"{safe_farm}_allatok.xlsx"
     if subject_set == {"land"}:
         return f"{safe_farm}_foldteruleti_adatok.xlsx"
+    if subject_set == {"support"}:
+        return f"{safe_farm}_tamogatasi_jogcimek.xlsx"
     return f"{safe_farm}_celzott_export.xlsx"
 
 
@@ -615,6 +631,18 @@ def build_targeted_export_payload(
                     build_land_view(
                         dataframe=bulk_data,
                         template=template_bundle["sheets"]["t1_a"],
+                        farm_code=farm_code,
+                    ),
+                )
+            )
+
+        if "support" in subjects:
+            sheet_frames.append(
+                (
+                    "Támogatási jogcímek",
+                    build_support_view(
+                        dataframe=bulk_data,
+                        templates=template_bundle["sheets"],
                         farm_code=farm_code,
                     ),
                 )
@@ -680,6 +708,7 @@ def show_targeted_export_dialog(
     st.session_state.setdefault("target_export_subject_stocks", True)
     st.session_state.setdefault("target_export_subject_animals", True)
     st.session_state.setdefault("target_export_subject_land", True)
+    st.session_state.setdefault("target_export_subject_support", True)
     st.session_state.setdefault("target_export_generating", False)
 
     st.caption("Válaszd ki az üzemeket és az export tárgyát.")
@@ -717,6 +746,7 @@ def show_targeted_export_dialog(
         stocks_available = "t5_c" in template_bundle["sheets"] and "t6_b" in template_bundle["sheets"]
         animals_available = "t6_a" in template_bundle["sheets"]
         land_available = "t1_a" in template_bundle["sheets"]
+        support_available = {"t7_c", "t7_b1"}.issubset(template_bundle["sheets"])
         st.checkbox(
             "Ősszel vetett terület",
             key="target_export_subject_autumn",
@@ -766,6 +796,18 @@ def show_targeted_export_dialog(
                 else "A földterületi exporthoz a t1_a munkalapnak is be kell töltődnie."
             ),
         )
+        st.checkbox(
+            "Támogatási jogcímek",
+            key="target_export_subject_support",
+            disabled=not support_available,
+            on_change=clear_targeted_export_download,
+            help=(
+                "Az AKG és a kapcsolódó támogatási jogcímeket minden kijelölt üzemnél "
+                "feltünteti. A hiányzó értékek is megmaradnak, az összegek Ft-ban jelennek meg."
+                if support_available
+                else "A támogatási exporthoz a t7_c és t7_b1 munkalap szükséges."
+            ),
+        )
 
         selected_farms = [
             farm_code
@@ -781,6 +823,8 @@ def show_targeted_export_dialog(
             selected_subjects.append("animals")
         if st.session_state["target_export_subject_land"] and land_available:
             selected_subjects.append("land")
+        if st.session_state["target_export_subject_support"] and support_available:
+            selected_subjects.append("support")
         st.caption(f"Kijelölt üzemek: {len(selected_farms)}")
 
         export_enabled = bool(selected_farms) and bool(selected_subjects)
@@ -851,8 +895,9 @@ def main() -> None:
     sheets = template_bundle["sheets"]
     template_summary = summarize_template(template_bundle)
 
-    target_export_available = bool(bulk_data.shape[0]) and any(
-        sheet_name in sheets for sheet_name in ("t5_c", "t6_b", "t6_a", "t1_a")
+    target_export_available = bool(bulk_data.shape[0]) and (
+        any(sheet_name in sheets for sheet_name in ("t5_c", "t6_b", "t6_a", "t1_a"))
+        or {"t7_c", "t7_b1"}.issubset(sheets)
     )
     target_export_requested = st.sidebar.button(
         "Célzott export",
