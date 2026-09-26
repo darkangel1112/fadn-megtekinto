@@ -45,8 +45,9 @@ Felelős:
 - sorazonosítók munkalaphoz kapcsolása;
 - általános nézet építése;
 - 5C mezei leltár célzott exportnézetének építése;
-- 5C–6B kódalapú készlet-párosítás és célzott készlet-exportnézet építése.
+- 5C–6B kódalapú készlet-párosítás és célzott készlet-exportnézet építése;
 - 6A záróállomány-alapú, összesítő sorokat kizáró állat-exportnézet építése.
+- t1_a földterületi exportnézet építése a megjelenítő sorrendje és értékszűrése szerint.
 
 ### `sugo.md`
 
@@ -90,6 +91,12 @@ A `build_sheet_view` egy üzemhez és egy sablonmunkalaphoz:
 5. alkalmazza a kitöltött- és zárósor-szűrést.
 
 A dinamikus sorazonosítók numerikusan rendeződnek, ha numerikus értéket tartalmaznak.
+
+## t1_a földterületi export
+
+A `build_land_view` a `t1_a` sablonhoz tartozó általános nézetből indul ki, és üzemenként csak azokat a sorokat tartja meg, amelyekben legalább egy valódi értékoszlop nem üres és nem nulla. A sablon összesítő és számított sorai nem kapnak külön kizárási szabályt.
+
+A kimenet a `FarmCode`, `RowCode`, `RowTitle` mezőket és a nem üres kódú t1_a értékoszlopokat tartalmazza. A `DynRowSerial`, `Dimension1` és a sablon üres záró fejléce nem kerül a célzott munkalapra. Az értékek export előtt numerikus értékké alakulnak, a hiányzó értékek pedig üresek maradnak.
 
 ## Munkamenet- és dialogállapot
 

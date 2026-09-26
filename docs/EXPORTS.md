@@ -88,7 +88,7 @@ Az exportált munkafüzet:
 
 Az Excel a számformátumot a felhasználó regionális beállításai szerint jeleníti meg, így magyar Excelben tizedesvessző látható.
 
-## Kimeneti fájlnevek
+### Ősszel vetett terület fájlneve
 
 Egy üzem esetén:
 
@@ -103,6 +103,55 @@ celzott_export.zip
 ```
 
 A ZIP-ben minden üzemhez külön `.xlsx` fájl tartozik.
+
+## Aktív export: Földterületi adatok – t1_a
+
+### Forrás és kiválasztási szabály
+
+- forrásmunkalap: `t1_a`;
+- értékoszlopok: a sablon nem üres kódú `osz = 3–9` oszlopai;
+- csak olyan sor kerül az exportba, amelyben legalább egy értékoszlop nem üres és nem nulla;
+- az üres és nulla értékű cellák üresen maradnak, nem lesznek automatikusan nullává alakítva;
+- a sorok a `t1_a` sablon sorrendjét követik;
+- az összesítő és számított sorok is megmaradnak, ha van bennük adat;
+- a sablon üres záró fejlécű technikai oszlopa nem kerül a kimenetbe.
+
+### Kimeneti munkalap és oszlopok
+
+A munkalap neve:
+
+```text
+Földterületi adatok
+```
+
+Az oszlopok a megjelenítő főnézetének sorrendjét követik:
+
+| Oszlop | Tartalom |
+| --- | --- |
+| `FarmCode` | a kiválasztott üzem kódja |
+| `RowCode` | a t1_a sablon sorazonosítója |
+| `RowTitle` | a t1_a sablon sorának megnevezése |
+| `saját tulajdon (+)` | t1_a `osz = 3` |
+| `bérleti díjért bérbe adott terület (-)` | t1_a `osz = 4` |
+| `ingyenesen bérbe adott terület (-)` | t1_a `osz = 5` |
+| `bérleti díjért bérbe vett terület (+)` | t1_a `osz = 6` |
+| `ingyenes bérbe vett terület (+)` | t1_a `osz = 7` |
+| `üzem által használt összes terület (=)` | t1_a `osz = 8` |
+| `földérték` | t1_a `osz = 9` |
+
+Az `FarmCode`, `RowCode` és `RowTitle` technikai/azonosító mezők szövegként maradnak. A hét értékoszlop valódi numerikus Excel-cella, két tizedes formátummal. A munkalap fejlécszűrőt, rögzített fejlécet, rácsvonalat és vékony cellakeretet kap.
+
+Ha egy üzemnél nincs érdemi t1_a adat, a `Földterületi adatok` munkalap csak fejléccel készül, üres Excel-tábla és üres AutoFilter nélkül.
+
+### Kimeneti helye
+
+A munkalap az üzemenkénti munkafüzet negyedik lapja, az `Ősszel vetett terület`, `Készletek` és `Állatok` munkalapok után, ha mindegyik exporttárgy ki van választva.
+
+Ha csak ez az export van kiválasztva, egy üzem esetén a fájlnév:
+
+```text
+<uzemkod>_foldteruleti_adatok.xlsx
+```
 
 ## Aktív export: Készletek – 5C és 6B
 

@@ -1,5 +1,13 @@
 # Változásnapló
 
+## 2026-09-25 – t1_a földterületi célzott export
+
+- új „Földterületi adatok” exporttárgy a célzott export dialogban;
+- a t1_a munkalap nem üres és nem nulla adatot tartalmazó sorainak exportja;
+- a megjelenítő sorrendjét követő `FarmCode`, `RowCode`, `RowTitle` és hét értékoszlop;
+- numerikus, két tizedes értékek és üres cellák megőrzése;
+- a földterületi munkalap a teljes kiválasztott export negyedik lapjaként készül.
+
 ## 2026-09-21 – Célzott export gomb állapotkezelése
 
 - a Célzott export gomb a dialog megnyitása és az export elkészítése közben is látható marad;

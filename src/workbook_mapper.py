@@ -350,6 +350,51 @@ def build_sheet_view(
     return pd.DataFrame(records)
 
 
+def build_land_view(
+    dataframe: pd.DataFrame,
+    template: SheetTemplate,
+    farm_code: str,
+) -> pd.DataFrame:
+    """Build the targeted t1_a export from rows with meaningful values.
+
+    The output follows the visible general-view column order, but excludes
+    hidden technical columns and the trailing empty template header. Every
+    template row with at least one non-empty, non-zero value is retained,
+    including calculated and summary rows.
+    """
+
+    value_columns = [
+        (code, label)
+        for code, label in zip(template.column_codes, template.column_labels)
+        if _clean(code) and _clean(label)
+    ]
+    columns = ["FarmCode", "RowCode", "RowTitle"] + [
+        label for _, label in value_columns
+    ]
+
+    visible_view = build_sheet_view(
+        dataframe=dataframe,
+        template=template,
+        farm_code=farm_code,
+        filled_only=True,
+        closing_only=False,
+    )
+    if visible_view.empty:
+        return pd.DataFrame(columns=columns)
+
+    export_view = pd.DataFrame(
+        {
+            "FarmCode": visible_view["FarmCode"],
+            "RowCode": visible_view["RowCode"],
+            "RowTitle": visible_view["RowTitle"],
+        }
+    )
+    for _, label in value_columns:
+        export_view[label] = visible_view[label].map(_parse_export_number)
+
+    return export_view[columns].reset_index(drop=True)
+
+
 def _parse_export_number(value: Any) -> float | None:
     text = _clean(value)
     if not text:

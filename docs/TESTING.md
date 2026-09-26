@@ -55,6 +55,8 @@ Az egészségügyi végpont elvárt válasza: `ok`.
 - [ ] Az „Ősszel vetett terület” és a „Készletek” kérdőjele rövid magyarázatot jelenít meg.
 - [ ] Az „Állatok” exporttárgy alapból kijelölve jelenik meg, ha a 6A munkalap elérhető.
 - [ ] Az „Állatok” kérdőjele röviden jelzi a 6A záróállomány, az összesítő-kizárás és a súlysorok szabályát.
+- [ ] A „Földterületi adatok” exporttárgy alapból kijelölve jelenik meg, ha a t1_a munkalap elérhető.
+- [ ] A „Földterületi adatok” kérdőjele jelzi a nem nulla és nem üres t1_a sorok szabályát.
 - [ ] A célzott export dialog az előző változathoz képest szélesebb, nagy méretű változatban jelenik meg.
 - [ ] A súgó dialog szélesebb, a tartalma saját görgetősávval görgethető, a „Súgó” fejléc látható marad.
 - [ ] A célzott export dialog bezárása után az első munkalapváltás azonnal frissíti a fő táblát.
@@ -95,6 +97,16 @@ Az egészségügyi végpont elvárt válasza: `ok`.
 - [ ] A `Záróérték` valódi numerikus cella, két tizedes formátummal.
 - [ ] A fejlécszűrő, rácsvonal, rögzített fejléc és vékony cellakeret megmarad.
 - [ ] Üres 6A adat esetén az `Állatok` lap csak fejléccel készül, Excel-táblaobjektum és AutoFilter nélkül.
+
+### Földterületi adatok export
+
+- [ ] A `t1_a` munkalapból külön `Földterületi adatok` munkalap készül.
+- [ ] Csak azok a t1_a sorok jelennek meg, amelyekben legalább egy értékoszlop nem üres és nem nulla.
+- [ ] A t1_a összesítő és számított sorai megmaradnak, ha van bennük adat.
+- [ ] A hét értékoszlop a megjelenítő sorrendjében és valódi numerikus Excel-cellaként jelenik meg.
+- [ ] A `FarmCode`, `RowCode` és `RowTitle` mezők megmaradnak; a technikai oszlopok és az üres sablonoszlop kimaradnak.
+- [ ] A t1_a export a teljes kijelölt export negyedik munkalapja.
+- [ ] Üres t1_a adat esetén a munkalap csak fejléccel készül, Excel-táblaobjektum és AutoFilter nélkül.
 
 ### Üres célzott exportlapok
 

@@ -28,6 +28,9 @@ A bal oldali sávban a feltöltött ömlesztett és sablonfájl után megjelenik
 - Az exportált értékek numerikusak, két tizedessel jelennek meg.
 - A célzott export gomb a dialog megnyitása és az export elkészítése közben is látható marad a bal oldali sávban.
 - A célzott export ablaka az elkészítés és a letöltés után is nyitva marad; a Bezárás gomb, a jobb felső `×` és az Esc billentyű is szabályosan bezárja.
+- A „Földterületi adatok” export a `t1_a` munkalap nem nulla és nem üres adatsort tartalmazó sorait adja vissza.
+- A földterületi munkalap a megjelenítő sorrendjét követi: `FarmCode`, `RowCode`, `RowTitle`, majd a hét t1_a értékoszlopot.
+- A t1_a összesítő és számított sorai is bekerülnek, ha van bennük adat.
 - A „Készletek” export az 5C és 6B zárókészleteit külön `Készletek` munkalapon kapcsolja össze.
 - A készlet-párosítás az `mXXXX` kódszabály alapján történik, az összesítő sorok nélkül.
 - A `6B - 5C` különbözet vásárolt készletként jelenik meg, a csak 6B-ben szereplő készletsorok is bekerülnek.

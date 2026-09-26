@@ -33,6 +33,7 @@ from workbook_mapper import (
     attach_sheet_names,
     build_animal_view,
     build_autumn_sown_view,
+    build_land_view,
     build_sheet_view,
     build_stock_view,
     list_farms,
@@ -261,6 +262,7 @@ def open_targeted_export(farms: list[str]) -> None:
     st.session_state["target_export_subject_autumn"] = True
     st.session_state["target_export_subject_stocks"] = True
     st.session_state["target_export_subject_animals"] = True
+    st.session_state["target_export_subject_land"] = True
     for farm_code in farms:
         st.session_state[_target_farm_key(farm_code)] = False
     clear_targeted_export_download()
@@ -484,7 +486,8 @@ def dataframes_to_excel_bytes(
             numeric_columns = {
                 column
                 for column in dataframe.columns
-                if column in {
+                if pd.api.types.is_numeric_dtype(dataframe[column])
+                or column in {
                     "Érték",
                     "Záróérték",
                     "5C záróérték",
@@ -552,6 +555,8 @@ def _targeted_export_filename(farm_code: str, subjects: list[str]) -> str:
         return f"{safe_farm}_keszletek.xlsx"
     if subject_set == {"animals"}:
         return f"{safe_farm}_allatok.xlsx"
+    if subject_set == {"land"}:
+        return f"{safe_farm}_foldteruleti_adatok.xlsx"
     return f"{safe_farm}_celzott_export.xlsx"
 
 
@@ -598,6 +603,18 @@ def build_targeted_export_payload(
                     build_animal_view(
                         dataframe=bulk_data,
                         template=template_bundle["sheets"]["t6_a"],
+                        farm_code=farm_code,
+                    ),
+                )
+            )
+
+        if "land" in subjects:
+            sheet_frames.append(
+                (
+                    "Földterületi adatok",
+                    build_land_view(
+                        dataframe=bulk_data,
+                        template=template_bundle["sheets"]["t1_a"],
                         farm_code=farm_code,
                     ),
                 )
@@ -662,6 +679,7 @@ def show_targeted_export_dialog(
     st.session_state.setdefault("target_export_subject_autumn", True)
     st.session_state.setdefault("target_export_subject_stocks", True)
     st.session_state.setdefault("target_export_subject_animals", True)
+    st.session_state.setdefault("target_export_subject_land", True)
     st.session_state.setdefault("target_export_generating", False)
 
     st.caption("Válaszd ki az üzemeket és az export tárgyát.")
@@ -698,6 +716,7 @@ def show_targeted_export_dialog(
         autumn_available = "t5_c" in template_bundle["sheets"]
         stocks_available = "t5_c" in template_bundle["sheets"] and "t6_b" in template_bundle["sheets"]
         animals_available = "t6_a" in template_bundle["sheets"]
+        land_available = "t1_a" in template_bundle["sheets"]
         st.checkbox(
             "Ősszel vetett terület",
             key="target_export_subject_autumn",
@@ -735,6 +754,18 @@ def show_targeted_export_dialog(
                 else "Az állatok exportjához a 6A munkalapnak is be kell töltődnie."
             ),
         )
+        st.checkbox(
+            "Földterületi adatok",
+            key="target_export_subject_land",
+            disabled=not land_available,
+            on_change=clear_targeted_export_download,
+            help=(
+                "A t1_a munkalap minden olyan sorát exportálja, amelyben legalább egy "
+                "nem nulla érték található. Az értékoszlopok a megjelenítő sorrendjét követik."
+                if land_available
+                else "A földterületi exporthoz a t1_a munkalapnak is be kell töltődnie."
+            ),
+        )
 
         selected_farms = [
             farm_code
@@ -748,6 +779,8 @@ def show_targeted_export_dialog(
             selected_subjects.append("stocks")
         if st.session_state["target_export_subject_animals"] and animals_available:
             selected_subjects.append("animals")
+        if st.session_state["target_export_subject_land"] and land_available:
+            selected_subjects.append("land")
         st.caption(f"Kijelölt üzemek: {len(selected_farms)}")
 
         export_enabled = bool(selected_farms) and bool(selected_subjects)
@@ -819,7 +852,7 @@ def main() -> None:
     template_summary = summarize_template(template_bundle)
 
     target_export_available = bool(bulk_data.shape[0]) and any(
-        sheet_name in sheets for sheet_name in ("t5_c", "t6_b", "t6_a")
+        sheet_name in sheets for sheet_name in ("t5_c", "t6_b", "t6_a", "t1_a")
     )
     target_export_requested = st.sidebar.button(
         "Célzott export",

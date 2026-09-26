@@ -2,7 +2,7 @@
 
 A FADN Megtekintő az ömlesztett FADN Excel-exportot a táblázatos sablon alapján olvasható, visszaépített nézetté alakítja.
 
-Az alkalmazás Streamlit-alapú, és a feltöltött munkafüzetekből dolgozik. A célzott export a 5C mezei leltárát, az 5C és 6B alapján képzett készleteket, valamint a 6A állatállomány nem nulla záróértékeit exportálja Excelbe.
+Az alkalmazás Streamlit-alapú, és a feltöltött munkafüzetekből dolgozik. A célzott export a 5C mezei leltárát, az 5C és 6B alapján képzett készleteket, a 6A állatállomány nem nulla záróértékeit, valamint a t1_a földterületi adatait exportálja Excelbe.
 
 ## Jelenlegi állapot
 
@@ -18,6 +18,7 @@ Az alkalmazás Streamlit-alapú, és a feltöltött munkafüzetekből dolgozik. 
 - célzott 5C export Excelbe;
 - célzott készlet-export az 5C és 6B munkalap alapján;
 - célzott állat-export a 6A munkalap záróállományából;
+- célzott t1_a földterületi export a megjelenítő táblázatos formájában;
 - egy üzem esetén egy Excel-fájl, több üzem esetén ZIP-csomag üzemenként külön Excel-fájlokkal;
 - Excel-szűrő, rácsvonal, vékony cellakeret, fejlécformázás és numerikus két tizedes formátum.
 
@@ -49,7 +50,7 @@ http://127.0.0.1:8503
 6. Jelöld ki az üzemeket és az aktív exporttárgyat.
 7. Készítsd el, majd töltsd le az exportot.
 
-A célzott export ablaka az elkészítés után nyitva marad, és csak a „Bezárás” gombbal zárható be.
+A célzott export ablaka az elkészítés után nyitva marad. A „Bezárás” gomb, a jobb felső `×` és az Esc billentyű is szabályosan bezárja.
 
 ## Bemeneti fájlok
 
@@ -108,6 +109,18 @@ A célzott export `Állatok` munkalapja a 6A sablon nem nulla záróállományai
 - A `Záróérték` valódi numerikus Excel-cellaként, két tizedessel kerül kiírásra.
 - Ha egy üzemnél nincs releváns nem nulla állatadat, az `Állatok` munkalap csak fejléccel készül, hibás üres Excel-tábla nélkül.
 
+## Földterületi adatok export röviden
+
+A célzott export `Földterületi adatok` munkalapja a `t1_a` sablon minden olyan sorát tartalmazza, amelyben legalább egy értékoszlopban nem nulla, nem üres adat található.
+
+- A hét valódi értékoszlop az `osz = 3–9` kódokból épül fel.
+- A sorok a t1_a sablon sorrendjét követik.
+- Az összesítő és számított sorok is bekerülnek, ha van bennük adat.
+- A `FarmCode`, `RowCode`, `RowTitle` és a megjelenítő értékoszlopai kerülnek a munkalapra.
+- A technikai oszlopok és a sablon üres záró fejléce nem kerülnek bele.
+- Az értékek valódi numerikus Excel-cellák, két tizedes formátummal; az üres értékek üresen maradnak.
+- Ha az adott üzemhez nincs értékes t1_a adat, a munkalap csak fejléccel készül.
+
 ## Adatvédelem és tesztadatok
 
 A feltöltött munkafüzetek nem kerülnek tartós alkalmazás-adattárba. Az adatok az aktuális Streamlit-munkamenetben vannak jelen; a források törlése vagy a munkamenet megszűnése után nem maradnak elérhetők.
@@ -118,7 +131,7 @@ A feltöltött munkafüzetek nem kerülnek tartós alkalmazás-adattárba. Az ad
 
 - [Súgó](sugo.md) – rövid felhasználói leírás az alkalmazáson belül.
 - [Architektúra](docs/ARCHITECTURE.md) – modulok, adatfolyam és bővítési pontok.
-- [Export-specifikáció](docs/EXPORTS.md) – jelenlegi 5C, 5C/6B készlet- és 6A állat-export.
+- [Export-specifikáció](docs/EXPORTS.md) – jelenlegi 5C, 5C/6B készlet-, 6A állat- és t1_a földterületi export.
 - [Üzemeltetés](docs/OPERATIONS.md) – helyi és systemd-alapú indítás, naplózás, hibakeresés.
 - [Tesztelés](docs/TESTING.md) – érzékeny adatok nélküli ellenőrzési eljárás.
 - [Változásnapló](CHANGELOG.md) – funkcionális változások és fejlesztési állapot.
