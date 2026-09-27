@@ -25,12 +25,18 @@ A bal oldali sávban a feltöltött ömlesztett és sablonfájl után megjelenik
 - Csak a nem üres és nem nulla záró értékű sorok kerülnek bele.
 - A búza külön sorai megmaradnak, és ha legalább az egyik értékes, egy összesített Búza sor is készül.
 - Egy üzem esetén egy Excel-fájl, több üzem esetén üzemenként külön Excel-fájl ZIP-csomagban tölthető le.
-- Az exportált értékek numerikusak, két tizedessel jelennek meg.
+- A mennyiségi exportok értékei numerikusak, két tizedessel jelennek meg; a támogatási összegek egész forintban jelennek meg.
 - A célzott export gomb a dialog megnyitása és az export elkészítése közben is látható marad a bal oldali sávban.
 - A célzott export ablaka az elkészítés és a letöltés után is nyitva marad; a Bezárás gomb, a jobb felső `×` és az Esc billentyű is szabályosan bezárja.
 - A „Földterületi adatok” export a `t1_a` munkalap nem nulla és nem üres adatsort tartalmazó sorait adja vissza.
 - A földterületi munkalap a megjelenítő sorrendjét követi: `FarmCode`, `RowCode`, `RowTitle`, majd a hét t1_a értékoszlopot.
 - A t1_a összesítő és számított sorai is bekerülnek, ha van bennük adat.
+- A „Támogatási jogcímek” export a `t7_c` és `t7_b1` munkalapokból készül, és minden kijelölt üzemnél ugyanazt a teljes jogcímlistát jeleníti meg.
+- Az AKG-, erdészeti és Natura 2000 összegek a `t7_c` `osz = 3` adataiból, a fiatal gazdák CIS-YF összege az `m7407` `t7_b1` `osz = 4` adatából származik.
+- A támogatási összegek numerikus Excel-cellákban, egész forintként jelennek meg; a forrás eFt értékei 1 000-rel szorozva kerülnek kiírásra.
+- Az összesítő jogcímek külön jelölést kapnak, és nem szabad őket a részjogcímekhez hozzáadni. A hiányzó, üres vagy nulla forrásértékek állapota külön megmarad.
+- A kistermelői támogatás forráskód nélkül is szerepelhet, de üres összeggel és külön jelzéssel. Az `m7213` és `m7240` nem kerül automatikusan a fiatal gazdák `m7407` sorába.
+- Ha csak ez az export van kiválasztva, a munkalap neve `Támogatási jogcímek`, egy üzemnél a fájl neve `<uzemkod>_tamogatasi_jogcimek.xlsx`.
 - A „Készletek” export az 5C és 6B zárókészleteit külön `Készletek` munkalapon kapcsolja össze.
 - A készlet-párosítás az `mXXXX` kódszabály alapján történik, az összesítő sorok nélkül.
 - A `6B - 5C` különbözet vásárolt készletként jelenik meg, a csak 6B-ben szereplő készletsorok is bekerülnek.
