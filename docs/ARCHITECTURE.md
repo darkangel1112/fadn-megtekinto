@@ -50,6 +50,7 @@ Felelős:
 - t1_a földterületi exportnézet építése a megjelenítő sorrendje és értékszűrése szerint;
 - t0 törzsadat-exportnézet építése a kiválasztott alapadatokkal és a számított AKG jelzéssel;
 - a rögzített támogatási jogcímlista előállítása a `t7_c` és `t7_b1` forráskódjai alapján, hiányzó értékek jelölésével.
+- t3_b hiteladat-, t4_a általános költség-, t2 családtag- és 6B állattenyésztési felhasználás-exportnézet építése.
 
 ### `sugo.md`
 
@@ -108,6 +109,10 @@ Az export egy további, számított `AKG` sort is létrehoz. Az `Igen` jelzéshe
 
 A kimeneti dataframe oszlopai: `Üzemkód`, `RowCode`, `Törzsadat megnevezése`, `Érték`. A számított sor technikai `RowCode` értéke `AKG`, nem eredeti `mXXXX` azonosító.
 
+### Törzsadatok hiteladat-táblája
+
+A `build_loan_view` a t3_b három összesített hitelsorát (`m3610`, `m3615`, `m3660`) vizsgálja az `osz = 3` értékoszlopban. A munkalap aljára csak a nem nulla sorok kerülnek külön Excel-táblaként. Az értékek eFt-ban maradnak, így nem keverednek a támogatási export Ft-os átváltásával.
+
 ## Munkamenet- és dialogállapot
 
 A betöltött forrásokat a Streamlit `session_state` tárolja. A forrásfájlok SHA-1-alapú aláírása alapján csak forrásváltozáskor történik új beolvasás.
@@ -138,6 +143,16 @@ Ez fontos, mert a célzott export dialog fragmentként működik, és bezárásk
 A `build_stock_view` nem soronként karbantartott párosítási táblát használ. Az 5C sorazonosítóból a kódcsalád szabálya alapján állítja elő a várt 6B sorazonosítót (`m55 → m64`, `m56 → m65`, `m57 → m66`, `m58 → m67`).
 
 A sablon összesítő sorait a megnevezés alapján kiszűri, majd a záróértékeket üzem, sorazonosító és `osz` szerint aggregálja. A számított saját és vásárolt készletet az export dataframe állítja elő. A csak 6B-ben megtalált részletes sorok külön 6B-only rekordként kerülnek az exportba.
+
+### Készletek állattenyésztési felhasználási táblája
+
+A `build_livestock_consumption_view` a `t6_b` `osz = 8` oszlopát olvassa. Ez az üzemi belső felhasználás állattenyésztési mennyisége. A mapper a sablon sorrendjében csak a nem nulla, nem összesítő sorokat tartja meg, és a forrás értékét tonnaként (`t`) adja vissza. A nézet az 5C–6B készlet-párosítás alatti, külön Excel-táblaként kerül a `Készletek` lapra. Hiányzó vagy nulla adatnál csak a szekció fejléce marad meg, üres táblázatobjektum nélkül.
+
+A `build_livestock_product_view` ugyanennek a 6B munkalapnak az `osz = 5` termelési oszlopából dolgozik. A sablonban azonosított állati termék-kódlistából csak a nem nulla, nem összesítő sorokat tartja meg: `m6635`, `m6636`, `m6639`, `m6640`, `m6677`, `m6678`, `m6679`, `m6706`, `m6707`, `m6708`, `m6709`, `m6710`, `m6727`, `m6728`, `m6735`, `m6737`, `m6740`, `m6748`. A tábla a trágya (`m6737`), gyapjú (`m6677`) és a további állati termékek termelt mennyiségét tartalmazza; a tojásnál `1000 db`, a többi terméknél `t` mértékegységet használ.
+
+### Általános költségek és családtagok
+
+A `build_general_cost_view` a t4_a `osz = 3` értékeit szűri a releváns költségkódokra, kizárja az összesítő sorokat, és az `m4082` sort külön kódlistás kivételként megtartja. A `build_family_member_view` a t2 családtagi és időszaki családtagi kódtartományait vizsgálja, és csak legalább egy kitöltött értékű sort ad ki. Mindkét nézet egy külön munkalapot kap az üzemenkénti export-munkafüzetben.
 
 Az exportáló réteg egy üzemenkénti munkafüzetbe több kiválasztott munkalapot ír. Több üzem esetén ezeket a munkafüzeteket ZIP-csomagba helyezi.
 

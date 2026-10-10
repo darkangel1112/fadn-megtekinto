@@ -20,7 +20,23 @@ A dialogban:
 - ha egy kiválasztott exporttárgyhoz az adott üzemben nincs nem nulla adat, a munkalap fejlécével megmarad, de üres Excel-tábla és üres AutoFilter nem kerül rá;
 - a `Törzsadatok` export a t0 kiválasztott alapadatait és a t7_c alapján számított AKG `Igen`/`Nem` sorát adja vissza;
 - kivétel a `Támogatási jogcímek` lap: a teljes rögzített jogcímlistát akkor is kiírja, ha nincs forrásérték;
+- a `Törzsadatok` és `Készletek` lapokon szereplő kiegészítő táblák külön Excel-táblaként készülnek, ezért külön szűrhetők;
 - a súgó nagyobb, belső görgethető tartalomterületet használ, így a súgó fejléce látható marad.
+
+## Aktuális export-munkalap sorrendje
+
+A kijelölt exporttárgyak az üzemenkénti munkafüzetben a következő sorrendben jelennek meg:
+
+1. `Törzsadatok`
+2. `Ősszel vetett terület`
+3. `Általános költségek`
+4. `Családtagok`
+5. `Készletek`
+6. `Állatok`
+7. `Földterületi adatok`
+8. `Támogatási jogcímek`
+
+A nem elérhető vagy nem kijelölt exporttárgy kimarad, ezért a tényleges munkalapszám és a későbbi lapok sorszáma a kiválasztástól függ. A `Készletek` munkalapon belüli felhasználási és állati termék táblák nem külön munkalapok, hanem ugyanazon munkalap kiegészítő táblái.
 
 ## Aktív export: Törzsadatok – t0 és számított AKG jelzés
 
@@ -47,6 +63,8 @@ Törzsadatok
 | `Törzsadat megnevezése` | az üzemi alapadat megnevezése |
 | `Érték` | a t0 szöveges értéke vagy az AKG `Igen`/`Nem` jelzése |
 
+A t0 szöveges értékeinél a numerikus választáskód és az azt követő `-`/gondolatjel levágódik. Így a `01 - Őstermelő` értékből `Őstermelő` lesz. A kód nélküli értékek, például évszámok, változatlanul kerülnek ki.
+
 Az aktív t0-sorok:
 
 | RowCode | Exportmegnevezés |
@@ -68,6 +86,18 @@ Ha csak a Törzsadatok export van kiválasztva, egy üzem esetén a fájlnév:
 ```text
 <uzemkod>_torzsadatok.xlsx
 ```
+
+### Törzsadatok kiegészítő táblája: hiteladatok
+
+A `Törzsadatok` munkalap alján külön táblázat készül a t3_b összesített hiteladataiból. Csak a nem nulla értékű, elérhető sorok kerülnek bele.
+
+| Forrás RowCode | Megnevezés | Értékoszlop |
+| --- | --- | --- |
+| `m3610` | Beruházási és fejlesztési hitelek | `osz = 3`, eFt |
+| `m3615` | Egyéb hosszú lejáratú hitelek | `osz = 3`, eFt |
+| `m3660` | Rövid lejáratú hitelek | `osz = 3`, eFt |
+
+A kiegészítő tábla oszlopai: `Üzemkód`, `RowCode`, `Hitel megnevezése`, `Érték (eFt)`, `Forrás munkalap`, `Forrás oszlop`. A pénzérték valódi numerikus Excel-cellaként, két tizedessel jelenik meg.
 
 ## Aktív export: 5C mezei leltár
 
@@ -194,7 +224,7 @@ Ha egy üzemnél nincs érdemi t1_a adat, a `Földterületi adatok` munkalap csa
 
 ### Kimeneti helye
 
-A munkalap az üzemenkénti munkafüzet negyedik lapja, az `Ősszel vetett terület`, `Készletek` és `Állatok` munkalapok után, ha mindegyik exporttárgy ki van választva.
+A munkalap az aktuális export-sorrendet követi; ha mind a nyolc exporttárgy ki van választva, a `Földterületi adatok` a hetedik munkalap.
 
 Ha csak ez az export van kiválasztva, egy üzem esetén a fájlnév:
 
@@ -258,6 +288,95 @@ A készlet-export ugyanabba az üzemenkénti Excel-fájlba kerül, mint a kivál
 - fejlécszűrő, rögzített fejléc és bekapcsolt rácsvonalak;
 - vékony cellakeret és formázott fejléc;
 - a hibás ellenőrzés piros, az érvényes állapot zöld háttérrel jelenik meg.
+
+### Kiegészítő tábla: állattenyésztésben felhasznált anyagok
+
+A `Készletek` munkalap alján külön táblázat készül a 6B üzemi belső felhasználási oszlopából:
+
+- forrásmunkalap: `t6_b`;
+- forrásoszlop: `osz = 8` (`üzemi belső felhasználás állattenyésztés (-)`);
+- csak a nem nulla, részletes anyagsorok kerülnek bele;
+- az összesítő sorok kimaradnak;
+- a forrásmennyiség tonna, ezért a kimenet mértékegysége minden rekordnál `t`.
+
+| Oszlop | Tartalom |
+| --- | --- |
+| `Üzemkód` | kiválasztott üzemkód |
+| `RowCode` | 6B anyagsor azonosítója |
+| `Megnevezés` | 6B sablon szerinti anyagmegnevezés |
+| `Mennyiség` | numerikus felhasznált mennyiség tonnában |
+| `Mértékegység` | `t` |
+| `Forrás oszlop` | `osz=8` |
+
+Ez a táblázat nem keveredik az 5C–6B készlet-párosítás fő táblájával. Ha nincs ilyen érték, a munkalapon a kiegészítő táblázat fejléce megmarad, de üres Excel-táblaobjektum nem jön létre.
+
+### Kiegészítő tábla: állati termékek
+
+A felhasznált anyagok táblája alatt második kiegészítő táblázat készül a 6B állati termékek termelési adataiból:
+
+- forrásmunkalap: `t6_b`;
+- forrásoszlop: `osz = 5` (`termelés (+)`);
+- a jelenlegi sablonban a következő állati termékkódok tartoznak ide: `m6635`, `m6636`, `m6639`, `m6640`, `m6677`, `m6678`, `m6679`, `m6706`, `m6707`, `m6708`, `m6709`, `m6710`, `m6727`, `m6728`, `m6735`, `m6737`, `m6740`, `m6748`;
+- csak nem nulla, nem összesítő sorok kerülnek bele;
+- a `m6737` trágya és a `m6677` gyapjú külön sorban jelenik meg;
+- a tojássoroknál a megnevezés szerinti `1000 db`, a többi állati terméknél `t` mértékegység szerepel.
+
+| Oszlop | Tartalom |
+| --- | --- |
+| `Üzemkód` | kiválasztott üzemkód |
+| `RowCode` | 6B állati termék sorazonosítója |
+| `Megnevezés` | 6B sablon szerinti megnevezés |
+| `Mennyiség` | numerikus termelt mennyiség |
+| `Mértékegység` | `t` vagy a tojásnál `1000 db` |
+| `Forrás oszlop` | `osz=5 (termelés)` |
+
+Ha nincs nem nulla állati termelési adat, a szekció fejléce megmarad, de üres Excel-táblaobjektum nem jön létre.
+
+## Aktív export: Általános költségek – t4_a
+
+### Forrás és kiválasztási szabály
+
+- forrásmunkalap: `t4_a`;
+- forrásérték-oszlop: `osz = 3` (`Ezer Ft`);
+- a releváns általános költségsorok és az `m4082` bérmunka/gépi munka sor kerülhet bele;
+- az összesítő sorok kimaradnak;
+- csak nem nulla értékű sorok kerülnek az exportba.
+
+### Kimeneti munkalap és oszlopok
+
+```text
+Általános költségek
+```
+
+| Oszlop | Tartalom |
+| --- | --- |
+| `Üzemkód` | kiválasztott üzemkód |
+| `RowCode` | t4_a sorazonosító, például `m4082` |
+| `Megnevezés` | t4_a sablon szerinti sor megnevezése |
+| `Érték (eFt)` | numerikus érték ezer forintban |
+| `Forrás munkalap` | `t4_a` |
+| `Forrás oszlop` | `osz=3` |
+
+Az `Érték (eFt)` valódi numerikus Excel-cellaként, két tizedessel készül. Ha csak ez az export van kijelölve, egy üzem esetén a fájlnév `<uzemkod>_altalanos_koltsegek.xlsx`.
+
+## Aktív export: Családtagok – t2
+
+### Forrás és kiválasztási szabály
+
+- forrásmunkalap: `t2`;
+- a családtagként vezetői, családtagi és időszaki családtagi sorok kerülnek vizsgálatra;
+- csak legalább egy kitöltött értéket tartalmazó sor kerül az exportba;
+- a t2 sablon értékoszlopai saját megnevezéssel, a forrás sorrendjében jelennek meg.
+
+### Kimeneti munkalap és oszlopok
+
+```text
+Családtagok
+```
+
+Az alap oszlopok: `Üzemkód`, `RowCode`, `Sor megnevezése`. Ezeket a t2 sablon nem üres értékoszlopainak megnevezései követik. Több dimenzióérték esetén az azonos cellába tartozó különböző értékek ` | ` jellel maradnak megkülönböztetve.
+
+Ha csak ez az export van kijelölve, egy üzem esetén a fájlnév `<uzemkod>_csaladtagok.xlsx`.
 
 ## Aktív export: Állatok – 6A
 

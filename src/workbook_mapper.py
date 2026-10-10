@@ -81,6 +81,37 @@ MASTER_DATA_LABELS = {
 }
 AKG_SOURCE_PREFIXES = ("m7080", "m7082", "m7084", "m7086")
 AKG_SUMMARY_ROW_CODE = "m7094"
+LOAN_EXPORT_ITEMS = (
+    ("Beruházási és fejlesztési hitelek", "m3610", "t3_b", "3"),
+    ("Egyéb hosszú lejáratú hitelek", "m3615", "t3_b", "3"),
+    ("Rövid lejáratú hitelek", "m3660", "t3_b", "3"),
+)
+GENERAL_COST_ROW_RANGE = (4281, 4590)
+GENERAL_COST_EXTRA_ROW_CODES = ("m4082",)
+FAMILY_MEMBER_ROW_RANGES = ((2141, 2150), (2201, 2210))
+FAMILY_MEMBER_EXTRA_ROW_CODES = ("m2251",)
+LIVESTOCK_CONSUMPTION_COLUMN = "8"
+LIVESTOCK_PRODUCT_COLUMN = "5"
+LIVESTOCK_PRODUCT_ROW_CODES = (
+    "m6635",
+    "m6636",
+    "m6639",
+    "m6640",
+    "m6677",
+    "m6678",
+    "m6679",
+    "m6706",
+    "m6707",
+    "m6708",
+    "m6709",
+    "m6710",
+    "m6727",
+    "m6728",
+    "m6735",
+    "m6737",
+    "m6740",
+    "m6748",
+)
 
 SUPPORT_EXPORT_ITEMS = (
     ("Agrár-környezetgazdálkodási program", "m7094", "t7_c", "3", "Összesítő"),
@@ -277,6 +308,12 @@ def _clean(value: Any) -> str:
     if text.casefold() == "nan":
         return ""
     return text
+
+
+def _strip_numeric_prefix(value: str) -> str:
+    """Remove a leading numeric option code and separator from a label."""
+
+    return re.sub(r"^\s*\d+\s*[-–—]\s*", "", value).strip()
 
 
 def _sort_key(value: str) -> tuple[int, str]:
@@ -580,7 +617,7 @@ def build_master_data_view(
             for value in source_rows.loc[source_rows["sor"] == row_code, "ertek"].tolist()
         ]
         distinct_values = list(dict.fromkeys(value for value in values if value))
-        value = " | ".join(distinct_values)
+        value = " | ".join(_strip_numeric_prefix(item) for item in distinct_values)
         records.append(
             {
                 "Üzemkód": farm_code,
@@ -601,6 +638,318 @@ def build_master_data_view(
             "Érték": _akg_is_present(dataframe, templates, farm_code),
         }
     )
+    return pd.DataFrame(records, columns=columns)
+
+
+def _sum_source_values(values: list[Any]) -> float | None:
+    parsed_values = [
+        parsed
+        for parsed in (_parse_export_number(value) for value in values)
+        if parsed is not None
+    ]
+    if not parsed_values:
+        return None
+    return round(sum(parsed_values), 2)
+
+
+def build_loan_view(
+    dataframe: pd.DataFrame,
+    templates: dict[str, SheetTemplate],
+    farm_code: str,
+) -> pd.DataFrame:
+    """Build the available aggregated loan values for one farm."""
+
+    columns = [
+        "Üzemkód",
+        "RowCode",
+        "Hitel megnevezése",
+        "Érték (eFt)",
+        "Forrás munkalap",
+        "Forrás oszlop",
+    ]
+    records: list[dict[str, Any]] = []
+
+    for fallback_title, row_code, sheet_name, osz_code in LOAN_EXPORT_ITEMS:
+        template = templates.get(sheet_name)
+        if template is None:
+            continue
+        template_row = next(
+            (row for row in template.rows if row["row_code"] == row_code),
+            None,
+        )
+        if template_row is None:
+            continue
+
+        source_rows = dataframe[
+            (dataframe["akod"] == farm_code)
+            & (dataframe["sheet_name"] == sheet_name)
+            & (dataframe["sor"] == row_code)
+            & (dataframe["osz"] == osz_code)
+        ]
+        value = _sum_source_values(source_rows["ertek"].tolist())
+        if value is None or abs(value) < 1e-12:
+            continue
+
+        records.append(
+            {
+                "Üzemkód": farm_code,
+                "RowCode": row_code,
+                "Hitel megnevezése": template_row["row_title"] or fallback_title,
+                "Érték (eFt)": value,
+                "Forrás munkalap": sheet_name,
+                "Forrás oszlop": f"osz={osz_code}",
+            }
+        )
+
+    return pd.DataFrame(records, columns=columns)
+
+
+def _row_code_number(row_code: str) -> int | None:
+    cleaned = _clean(row_code)
+    if not cleaned.startswith("m") or not cleaned[1:].isdigit():
+        return None
+    return int(cleaned[1:])
+
+
+def _is_general_cost_row(template_row: dict[str, str]) -> bool:
+    row_code = template_row["row_code"]
+    if row_code in GENERAL_COST_EXTRA_ROW_CODES:
+        return True
+
+    row_number = _row_code_number(row_code)
+    if row_number is None or not (GENERAL_COST_ROW_RANGE[0] <= row_number <= GENERAL_COST_ROW_RANGE[1]):
+        return False
+
+    normalized_title = _clean(template_row["row_title"]).casefold()
+    return "összesen" not in normalized_title and "mindösszesen" not in normalized_title
+
+
+def build_general_cost_view(
+    dataframe: pd.DataFrame,
+    templates: dict[str, SheetTemplate],
+    farm_code: str,
+) -> pd.DataFrame:
+    """Build non-zero annual general-cost values, including m4082."""
+
+    columns = [
+        "Üzemkód",
+        "RowCode",
+        "Megnevezés",
+        "Érték (eFt)",
+        "Forrás munkalap",
+        "Forrás oszlop",
+    ]
+    template = templates.get("t4_a")
+    if template is None:
+        return pd.DataFrame(columns=columns)
+
+    source_rows = dataframe[
+        (dataframe["akod"] == farm_code)
+        & (dataframe["sheet_name"] == "t4_a")
+        & (dataframe["osz"] == "3")
+    ]
+    records: list[dict[str, Any]] = []
+    for template_row in template.rows:
+        if not _is_general_cost_row(template_row):
+            continue
+
+        row_code = template_row["row_code"]
+        matching_rows = source_rows[source_rows["sor"] == row_code]
+        value = _sum_source_values(matching_rows["ertek"].tolist())
+        if value is None or abs(value) < 1e-12:
+            continue
+
+        records.append(
+            {
+                "Üzemkód": farm_code,
+                "RowCode": row_code,
+                "Megnevezés": template_row["row_title"],
+                "Érték (eFt)": value,
+                "Forrás munkalap": "t4_a",
+                "Forrás oszlop": "osz=3",
+            }
+        )
+
+    return pd.DataFrame(records, columns=columns)
+
+
+def _is_family_member_row(row_code: str) -> bool:
+    if row_code in FAMILY_MEMBER_EXTRA_ROW_CODES:
+        return True
+    row_number = _row_code_number(row_code)
+    return any(
+        start <= row_number <= end
+        for start, end in FAMILY_MEMBER_ROW_RANGES
+        if row_number is not None
+    )
+
+
+def build_family_member_view(
+    dataframe: pd.DataFrame,
+    template: SheetTemplate,
+    farm_code: str,
+) -> pd.DataFrame:
+    """Build the filled family-member records from t2."""
+
+    value_columns = [
+        (code, label)
+        for code, label in zip(template.column_codes, template.column_labels)
+        if _clean(code)
+    ]
+    columns = ["Üzemkód", "RowCode", "Sor megnevezése"] + [
+        label for _, label in value_columns
+    ]
+    if template.sheet_name != "t2":
+        return pd.DataFrame(columns=columns)
+
+    source_rows = dataframe[
+        (dataframe["akod"] == farm_code)
+        & (dataframe["sheet_name"] == template.sheet_name)
+    ]
+    records: list[dict[str, Any]] = []
+    for template_row in template.rows:
+        row_code = template_row["row_code"]
+        if not _is_family_member_row(row_code):
+            continue
+
+        matching_rows = source_rows[source_rows["sor"] == row_code]
+        values_by_column = {
+            code: list(
+                dict.fromkeys(
+                    _clean(value)
+                    for value in matching_rows.loc[
+                        matching_rows["osz"] == code,
+                        "ertek",
+                    ].tolist()
+                    if _clean(value)
+                )
+            )
+            for code, _ in value_columns
+        }
+        values = [" | ".join(values_by_column[code]) for code, _ in value_columns]
+        if not any(_has_meaningful_value(value) for value in values):
+            continue
+
+        record: dict[str, Any] = {
+            "Üzemkód": farm_code,
+            "RowCode": row_code,
+            "Sor megnevezése": template_row["row_title"],
+        }
+        record.update({label: value for (_, label), value in zip(value_columns, values)})
+        records.append(record)
+
+    return pd.DataFrame(records, columns=columns)
+
+
+def build_livestock_consumption_view(
+    dataframe: pd.DataFrame,
+    template: SheetTemplate,
+    farm_code: str,
+) -> pd.DataFrame:
+    """Build non-zero t6_b quantities used internally for animal husbandry."""
+
+    columns = [
+        "Üzemkód",
+        "RowCode",
+        "Megnevezés",
+        "Mennyiség",
+        "Mértékegység",
+        "Forrás oszlop",
+    ]
+    if template.sheet_name != "t6_b":
+        return pd.DataFrame(columns=columns)
+
+    source_rows = dataframe[
+        (dataframe["akod"] == farm_code)
+        & (dataframe["sheet_name"] == template.sheet_name)
+        & (dataframe["osz"] == LIVESTOCK_CONSUMPTION_COLUMN)
+    ]
+    values_by_code = (
+        source_rows.assign(_parsed_value=source_rows["ertek"].map(_parse_export_number))
+        .dropna(subset=["_parsed_value"])
+        .groupby("sor")
+        ["_parsed_value"]
+        .sum()
+        .to_dict()
+    )
+
+    records: list[dict[str, Any]] = []
+    for template_row in template.rows:
+        row_code = template_row["row_code"]
+        if _is_stock_summary_row(template_row["row_title"]):
+            continue
+        value = values_by_code.get(row_code)
+        if value is None or abs(float(value)) < 1e-12:
+            continue
+        records.append(
+            {
+                "Üzemkód": farm_code,
+                "RowCode": row_code,
+                "Megnevezés": template_row["row_title"],
+                "Mennyiség": round(float(value), 2),
+                "Mértékegység": "t",
+                "Forrás oszlop": f"osz={LIVESTOCK_CONSUMPTION_COLUMN}",
+            }
+        )
+
+    return pd.DataFrame(records, columns=columns)
+
+
+def build_livestock_product_view(
+    dataframe: pd.DataFrame,
+    template: SheetTemplate,
+    farm_code: str,
+) -> pd.DataFrame:
+    """Build non-zero animal-product production quantities from t6_b."""
+
+    columns = [
+        "Üzemkód",
+        "RowCode",
+        "Megnevezés",
+        "Mennyiség",
+        "Mértékegység",
+        "Forrás oszlop",
+    ]
+    if template.sheet_name != "t6_b":
+        return pd.DataFrame(columns=columns)
+
+    source_rows = dataframe[
+        (dataframe["akod"] == farm_code)
+        & (dataframe["sheet_name"] == template.sheet_name)
+        & (dataframe["osz"] == LIVESTOCK_PRODUCT_COLUMN)
+    ]
+    values_by_code = (
+        source_rows.assign(_parsed_value=source_rows["ertek"].map(_parse_export_number))
+        .dropna(subset=["_parsed_value"])
+        .groupby("sor")["_parsed_value"]
+        .sum()
+        .to_dict()
+    )
+
+    records: list[dict[str, Any]] = []
+    for template_row in template.rows:
+        row_code = template_row["row_code"]
+        if row_code not in LIVESTOCK_PRODUCT_ROW_CODES:
+            continue
+        if _is_stock_summary_row(template_row["row_title"]):
+            continue
+
+        value = values_by_code.get(row_code)
+        if value is None or abs(float(value)) < 1e-12:
+            continue
+
+        unit = "1000 db" if "1000 db" in template_row["row_title"].casefold() else "t"
+        records.append(
+            {
+                "Üzemkód": farm_code,
+                "RowCode": row_code,
+                "Megnevezés": template_row["row_title"],
+                "Mennyiség": round(float(value), 2),
+                "Mértékegység": unit,
+                "Forrás oszlop": f"osz={LIVESTOCK_PRODUCT_COLUMN} (termelés)",
+            }
+        )
+
     return pd.DataFrame(records, columns=columns)
 
 

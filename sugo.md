@@ -20,7 +20,8 @@ A bal oldali sávban a feltöltött ömlesztett és sablonfájl után megjelenik
 
 - Válaszd ki az exportálandó üzemeket.
 - Az aktív exporttárgyak alapból ki vannak jelölve; amelyik nem kell, annak a jelölését vedd ki.
-- Az első elérhető export az ősszel vetett terület a 5C táblából.
+- A választható exporttárgyak a forrásmunkalapok meglététől függnek; a hiányzó feltételű tárgy letiltva jelenik meg.
+- Több kijelölt exporttárgy esetén a munkalapok sorrendje: `Törzsadatok`, `Ősszel vetett terület`, `Általános költségek`, `Családtagok`, `Készletek`, `Állatok`, `Földterületi adatok`, `Támogatási jogcímek`. A nem kijelölt tárgy kimarad.
 - Az export tartalmazza a mezei leltár összesítő és releváns vetési sorait, köztük az m5430 „Tavaszi vetések előkészítése” sort is.
 - Csak a nem üres és nem nulla záró értékű sorok kerülnek bele.
 - A búza külön sorai megmaradnak, és ha legalább az egyik értékes, egy összesített Búza sor is készül.
@@ -34,6 +35,8 @@ A bal oldali sávban a feltöltött ömlesztett és sablonfájl után megjelenik
 - A „Törzsadatok” export a `t0` munkalap hat kiválasztott üzemi alapadatát adja vissza: vállalkozási forma, adózás, biogazdálkodás, ökológiai átállás, ÁFA-rendszer és könyvelés módja.
 - A `Törzsadatok` munkalap végén külön `AKG` sor szerepel `Igen` vagy `Nem` értékkel. Ez a `t7_c` AKG összesítő és részletes sorai alapján számított jelzés, és a szántó, gyep, ültetvény vagy nádas AKG-érintettségét egységesen kezeli.
 - A `Törzsadatok` munkalap oszlopai: `Üzemkód`, `RowCode`, `Törzsadat megnevezése`, `Érték`. A számított AKG sor `RowCode` értéke `AKG`.
+- A t0 értékekből a numerikus választáskód és az azt követő gondolatjel levágódik, így például `01 - Őstermelő` helyett csak `Őstermelő` kerül az `Érték` oszlopba. A kód nélküli értékek változatlanok maradnak.
+- A `Törzsadatok` munkalap alján külön hiteladat-táblázat jelenik meg a t3_b nem nulla összesített hitelértékeivel (`m3610`, `m3615`, `m3660`), eFt-ban.
 - Ha csak ez az export van kiválasztva, a munkalap neve `Törzsadatok`, egy üzemnél a fájl neve `<uzemkod>_torzsadatok.xlsx`.
 - A „Támogatási jogcímek” export a `t7_c` és `t7_b1` munkalapokból készül, és minden kijelölt üzemnél ugyanazt a teljes jogcímlistát jeleníti meg.
 - Az AKG-, erdészeti és Natura 2000 összegek a `t7_c` `osz = 3` adataiból, a fiatal gazdák CIS-YF összege az `m7407` `t7_b1` `osz = 4` adatából származik.
@@ -44,6 +47,10 @@ A bal oldali sávban a feltöltött ömlesztett és sablonfájl után megjelenik
 - A „Készletek” export az 5C és 6B zárókészleteit külön `Készletek` munkalapon kapcsolja össze.
 - A készlet-párosítás az `mXXXX` kódszabály alapján történik, az összesítő sorok nélkül.
 - A `6B - 5C` különbözet vásárolt készletként jelenik meg, a csak 6B-ben szereplő készletsorok is bekerülnek.
+- A `Készletek` munkalap alján külön táblázat tartalmazza a 6B `osz = 8` oszlopából az állattenyésztésben felhasznált, nem nulla anyagokat. A mennyiség tonnában (`t`) szerepel, és az alap készlettáblától külön szűrhető.
+- Az anyagfelhasználási tábla alatt külön `Állati termékek` táblázat jelenik meg a 6B `osz = 5` termelési oszlopából. A nem nulla sorok közül ide tartozik például a `m6737` trágya és a `m6677` gyapjú; a tojássoroknál a sablon szerinti `1000 db`, a többi terméknél `t` mértékegység jelenik meg.
+- Az „Általános költségek” export a t4_a releváns, nem nulla költségsorait adja vissza külön munkalapon; az `m4082` bérmunka/gépi munka sor is része.
+- A „Családtagok” export a t2 kitöltött családtagi, családtagként vezetői és időszaki családtagi sorait adja vissza külön munkalapon.
 - Az „Állatok” export a 6A munkalap nem nulla záróállományait (`osz = 12`) külön `Állatok` munkalapra teszi.
 - Az állat-export oszlopai: `Üzemkód`, `RowCode`, `Sor megnevezése`, `Mértékegység`, `Záróérték`.
 - A 6A összesítő sorai kimaradnak, a nem nulla `előző sor t-ban` súlysorok viszont megmaradnak.

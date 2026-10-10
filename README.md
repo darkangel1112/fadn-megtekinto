@@ -2,7 +2,7 @@
 
 A FADN Megtekintő az ömlesztett FADN Excel-exportot a táblázatos sablon alapján olvasható, visszaépített nézetté alakítja.
 
-Az alkalmazás Streamlit-alapú, és a feltöltött munkafüzetekből dolgozik. A célzott export a 5C mezei leltárát, az 5C és 6B alapján képzett készleteket, a 6A állatállomány nem nulla záróértékeit, valamint a t1_a földterületi adatait exportálja Excelbe.
+Az alkalmazás Streamlit-alapú, és a feltöltött munkafüzetekből dolgozik. A célzott export a t0 törzsadatait, az 5C mezei leltárát, az 5C és 6B alapján képzett készleteket, a 6A állatállomány nem nulla záróértékeit, a t1_a földterületi adatait, valamint a támogatási, költség- és családtagadatokat exportálja Excelbe. A készlet-export kiegészítő táblákban az állattenyésztésben felhasznált anyagok és a nem nulla állati termékek is megjelenhetnek.
 
 ## Jelenlegi állapot
 
@@ -20,7 +20,10 @@ Az alkalmazás Streamlit-alapú, és a feltöltött munkafüzetekből dolgozik. 
 - célzott állat-export a 6A munkalap záróállományából;
 - célzott t1_a földterületi export a megjelenítő táblázatos formájában;
 - célzott t0 törzsadat-export az alapadatokkal és a számított AKG jelzéssel;
+- a Törzsadatok munkalapon külön hiteladat-táblázat a t3_b összesített hitelértékeivel;
 - célzott támogatási jogcím-export AKG- és kapcsolódó támogatási összegekkel;
+- célzott általános költség-export a t4_a nem nulla költségeivel és az m4082 bérmunka/gépi munka sorral;
+- célzott családtag-export a t2 kitöltött családtag- és időszaki családtag-soraival;
 - egy üzem esetén egy Excel-fájl, több üzem esetén ZIP-csomag üzemenként külön Excel-fájlokkal;
 - Excel-szűrő, rácsvonal, vékony cellakeret, fejlécformázás és numerikus két tizedes formátum.
 
@@ -98,6 +101,17 @@ A `Készletek` munkalap az 5C saját zárókészletét és a 6B összes zárók�
 
 Az export nem tartalmaz összesítő sorokat, csak olyan részletes sorokat, ahol az 5C vagy a 6B záróérték nem nulla. A `6B - 5C` különbözet vásárolt készletként jelenik meg. A csak 6B-ben szereplő `m6510 – Vásárolt takarmánykeverék` is bekerül, üres 5C mezőkkel.
 
+A `Készletek` munkalap alján külön, saját Excel-táblázat szerepel az állattenyésztésben felhasznált anyagokról. Ez a 6B `osz = 8` üzemi belső felhasználási oszlopából készül, csak nem nulla tételeket tartalmaz, és minden mennyiséget tonnában (`t`) ad vissza. Az alap készlettáblától elkülönül, ezért a két táblázat külön szűrhető.
+
+Ez alatt egy második, `Állati termékek` táblázat is megjelenik. A 6B `osz = 5` termelési oszlopából csak a nem nulla állati termékek kerülnek bele, így a trágya (`m6737`), a gyapjú (`m6677`), valamint a jelenlegi sablon további állati termék-sorai is exportálhatók. A tojásnál a sablonban jelzett `1000 db`, a többi ilyen terméknél a jelenlegi forrásértelmezés szerinti `t` mértékegység jelenik meg.
+
+## További célzott exportok röviden
+
+- A `Törzsadatok` munkalap alján külön `Hiteladatok – elérhető összesített értékek` táblázat jelenik meg a t3_b `m3610`, `m3615` és `m3660` soraiból, csak nem nulla eFt értékekkel.
+- Az `Általános költségek` munkalap a t4_a releváns, nem nulla költségsorait tartalmazza, és külön kezeli az `m4082` bérmunka/gépi munka sort.
+- A `Családtagok` munkalap a t2 családtagi, családtagként vezetői és időszaki családtagi sorok kitöltött értékeit adja vissza.
+- Ha valamelyik forráslap nem áll rendelkezésre, az adott exporttárgy inaktív. Ha egy üzemben nincs adat, a munkalap fejléc-only formában készül.
+
 ## Állatok export röviden
 
 A célzott export `Állatok` munkalapja a 6A sablon nem nulla záróállományait (`osz = 12`) tartalmazza.
@@ -116,6 +130,8 @@ A célzott export `Állatok` munkalapja a 6A sablon nem nulla záróállományai
 A `Törzsadatok` munkalap a t0 kiválasztott üzemi alapadatait egy üzemenkénti, egységes rekordlistában adja vissza. Az export az alábbi sorokat tartalmazza: `m0011` vállalkozási forma, `m0001` adózás, `m0005` biogazdálkodás, `m0075` ökológiai gazdálkodásra való átállás, `m0002` ÁFA-rendszer és `m0018` könyvelés módja.
 
 Az export végén külön számított `AKG` sor szerepel `Igen` vagy `Nem` értékkel. A jelzés a `t7_c` AKG összesítő és részletes sorai alapján készül, és nem a t0 egyetlen mXXXX sorából származik. A munkalap oszlopai: `Üzemkód`, `RowCode`, `Törzsadat megnevezése`, `Érték`.
+
+A t0 értékeknél a numerikus választáskód és az azt követő gondolatjel nem kerül az exportba: például `01 - Őstermelő` helyett csak `Őstermelő` jelenik meg. A kód nélküli értékek, például az évszámok, változatlanok maradnak.
 
 ## Földterületi adatok export röviden
 
@@ -143,7 +159,7 @@ A feltöltött munkafüzetek nem kerülnek tartós alkalmazás-adattárba. Az ad
 
 - [Súgó](sugo.md) – rövid felhasználói leírás az alkalmazáson belül.
 - [Architektúra](docs/ARCHITECTURE.md) – modulok, adatfolyam és bővítési pontok.
-- [Export-specifikáció](docs/EXPORTS.md) – jelenlegi t0 törzsadat-, 5C, 5C/6B készlet-, 6A állat- és t1_a földterületi export.
+- [Export-specifikáció](docs/EXPORTS.md) – jelenlegi törzsadat-, hitel-, 5C, 5C/6B készlet-, állattenyésztési felhasználás-, 6A állat-, t1_a-, általános költség- és családtag-export.
 - [Üzemeltetés](docs/OPERATIONS.md) – helyi és systemd-alapú indítás, naplózás, hibakeresés.
 - [Tesztelés](docs/TESTING.md) – érzékeny adatok nélküli ellenőrzési eljárás.
 - [Változásnapló](CHANGELOG.md) – funkcionális változások és fejlesztési állapot.

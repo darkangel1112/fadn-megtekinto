@@ -110,7 +110,7 @@ Az alkalmazás az ömlesztett `sor` kódokat a sablonból feloldott mappinggel k
 
 ### A célzott export gomb letiltva marad
 
-Mindkét forrásfájlt fel kell tölteni, és az ömlesztett adatoknak tényleges rekordokat kell tartalmazniuk. Az 5C célzott exporthoz a sablonban a `t5_c` munkalapnak is szerepelnie kell.
+Mindkét forrásfájlt fel kell tölteni, és az ömlesztett adatoknak tényleges rekordokat kell tartalmazniuk. Az egyes exporttárgyakhoz szükséges sablonmunkalapok eltérnek: az 5C exporthoz `t5_c`, a készletekhez `t5_c` és `t6_b`, az állatokhoz `t6_a`, a földterületi adatokhoz `t1_a`, a Törzsadatokhoz `t0` és `t7_c`, a támogatási jogcímekhez `t7_c` és `t7_b1`, az általános költségekhez `t4_a`, a családtagokhoz pedig `t2` szükséges. A dialog a hiányzó feltételű exporttárgyat letiltja.
 
 ### A böngészőben régi állapot látható
 

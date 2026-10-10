@@ -1,5 +1,16 @@
 # Változásnapló
 
+## 2026-10-10 – Hitel-, költség-, családtag- és állattenyésztési felhasználás-export
+
+- a `Törzsadatok` munkalap külön hiteladat-táblát kap a t3_b nem nulla összesített hitelértékeivel;
+- új `Általános költségek` munkalap a t4_a releváns nem nulla költségsoraival és az `m4082` bérmunka/gépi munka sorral;
+- új `Családtagok` munkalap a t2 kitöltött családtagi és időszaki családtagi adataival;
+- a `Készletek` munkalap külön táblázatban tartalmazza a 6B `osz = 8` állattenyésztési belső felhasználási anyagait, tonnában;
+- a felhasznált anyagok alatt külön `Állati termékek` tábla készült a 6B `osz = 5` termelési adataiból, beleértve a trágyát és a gyapjút;
+- a kiegészítő táblázatok külön szűrhető Excel-táblaként készülnek, üres adat esetén táblázatobjektum nélkül;
+- szintetikus regressziós tesztek és dokumentáció frissítve.
+- a Törzsadatok `Érték` oszlopából a numerikus választáskódok és elválasztóik eltávolításra kerülnek a további adatfelhasználás támogatására.
+
 ## 2026-10-10 – Törzsadatok célzott exportja
 
 - új `Törzsadatok` munkalap a t0 kiválasztott üzemi alapadataival;

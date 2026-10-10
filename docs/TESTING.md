@@ -59,6 +59,9 @@ Az egészségügyi végpont elvárt válasza: `ok`.
 - [ ] A „Földterületi adatok” kérdőjele jelzi a nem nulla és nem üres t1_a sorok szabályát.
 - [ ] A „Törzsadatok” exporttárgy alapból kijelölve jelenik meg, ha a t0 és t7_c munkalap elérhető.
 - [ ] A „Törzsadatok” kérdőjele jelzi a t0-alapadatok és a számított AKG-jelzés szabályát.
+- [ ] Az „Általános költségek” és „Családtagok” exporttárgy alapból kijelölve jelenik meg, ha a t4_a, illetve t2 munkalap elérhető.
+- [ ] Az „Általános költségek” kérdőjele jelzi a t4_a költségsorokat és az m4082 bérmunka/gépi munka sort.
+- [ ] A „Családtagok” kérdőjele jelzi a t2 családtagi sorokat és a kitöltött értékek szabályát.
 - [ ] A célzott export dialog az előző változathoz képest szélesebb, nagy méretű változatban jelenik meg.
 - [ ] A súgó dialog szélesebb, a tartalma saját görgetősávval görgethető, a „Súgó” fejléc látható marad.
 - [ ] A célzott export dialog bezárása után az első munkalapváltás azonnal frissíti a fő táblát.
@@ -69,6 +72,7 @@ Az egészségügyi végpont elvárt válasza: `ok`.
 - [ ] A „Törzsadatok” export csak akkor választható, ha a t0 és t7_c sablon is betöltődött.
 - [ ] A `Törzsadatok` munkalap a hat kiválasztott t0 sort tartalmazza, a sablon értékeivel.
 - [ ] Az üres t0-értékek üresen maradnak, a többi szöveges érték nem alakul át numerikus adattá.
+- [ ] A numerikus választáskód és az azt követő elválasztójel levágódik (például `01 - Őstermelő` esetén csak `Őstermelő` marad), a kód nélküli évszám változatlan.
 - [ ] Az export végén külön `AKG` sor szerepel `Igen` vagy `Nem` értékkel.
 - [ ] Nem nulla `m7094` vagy releváns részletes AKG-érték esetén az AKG jelzés `Igen`.
 - [ ] Kizárólag üres vagy nulla releváns AKG-érték esetén az AKG jelzés `Nem`.
@@ -99,6 +103,12 @@ Az egészségügyi végpont elvárt válasza: `ok`.
 - [ ] A `6B < 5C` eset piros hibajelzést és nullázott számított értékeket ad.
 - [ ] Több kiválasztott exporttárgy esetén ugyanabba az üzemenkénti Excel-fájlba kerülnek a munkalapok.
 - [ ] A készletértékek valódi numerikus cellák és két tizedes formátumúak.
+- [ ] A `Készletek` lap alján külön Excel-táblázat jelenik meg az állattenyésztésben felhasznált anyagokról.
+- [ ] A felhasználási tábla csak a 6B `osz = 8` nem nulla részletes sorait tartalmazza, minden mennyiség mértékegysége `t`.
+- [ ] A felhasználási tábla külön szűrhető, és az alap készlettáblával nem közös a fejlécszűrője.
+- [ ] A felhasználási tábla alatt külön `Állati termékek` tábla jelenik meg a 6B `osz = 5` termelési adataiból.
+- [ ] A `m6737` trágya és `m6677` gyapjú sor bekerül, ha a termelési értékük nem nulla.
+- [ ] A tojás mértékegysége `1000 db`, a többi állati terméké `t`.
 
 ### Állatok export
 
@@ -119,7 +129,7 @@ Az egészségügyi végpont elvárt válasza: `ok`.
 - [ ] A t1_a összesítő és számított sorai megmaradnak, ha van bennük adat.
 - [ ] A hét értékoszlop a megjelenítő sorrendjében és valódi numerikus Excel-cellaként jelenik meg.
 - [ ] A `FarmCode`, `RowCode` és `RowTitle` mezők megmaradnak; a technikai oszlopok és az üres sablonoszlop kimaradnak.
-- [ ] A t1_a export a teljes kijelölt export negyedik munkalapja.
+- [ ] A t1_a export az aktuális export-sorrend szerinti munkalap; teljes kijelölésnél a hetedik lap.
 - [ ] Üres t1_a adat esetén a munkalap csak fejléccel készül, Excel-táblaobjektum és AutoFilter nélkül.
 
 ### Támogatási jogcímek export
@@ -133,14 +143,24 @@ Az egészségügyi végpont elvárt válasza: `ok`.
 - [ ] A forrásbeli nulla, a kitöltetlen érték, a hiányzó forrássor és az azonosítatlan kód eltérő állapotként jelenik meg.
 - [ ] A kistermelői jogcím kód nélkül is szerepel, de az összege üres marad és ezt az adatállapot jelzi.
 - [ ] Az `m7213` és `m7240` induló támogatási sorok nem olvadnak be az `m7407` CIS-YF sorba.
-- [ ] Ha mind a hat exporttárgy be van jelölve, a `Támogatási jogcímek` a hatodik lap.
+- [ ] Ha mind a nyolc exporttárgy be van jelölve, a `Támogatási jogcímek` a nyolcadik lap.
 - [ ] A támogatási exporttárgy önmagában is helyes nevű `.xlsx` fájlt ad.
+
+### Hitel-, általános költség- és családtag-export
+
+- [ ] A `Törzsadatok` lap alján külön hiteladat-táblázat készül a t3_b nem nulla `m3610`, `m3615` és `m3660` értékekből.
+- [ ] A hiteladatok értéke eFt-ban marad, valódi numerikus cellaként és két tizedessel jelenik meg.
+- [ ] Az `Általános költségek` lap csak releváns, nem nulla t4_a sorokat tartalmaz, és az `m4082` sor bekerül, ha van értéke.
+- [ ] A `Családtagok` lap csak kitöltött t2 családtagi, családtagként vezetői és időszaki családtagi sorokat tartalmazza.
+- [ ] Mindkét új fő munkalap üres adatok esetén fejléc-only marad, hiba és üres Excel-tábla nélkül.
 
 ### Üres célzott exportlapok
 
 - [ ] Üres mezei leltár esetén a munkalap fejléc-only marad, hibajelzés nélkül.
 - [ ] Üres készlet esetén a munkalap fejléc-only marad, hibajelzés nélkül.
 - [ ] Üres állatadat esetén nincs üres `tbl_Allatok` táblázatdefiníció.
+- [ ] Üres állattenyésztési felhasználás esetén nincs üres kiegészítő Excel-táblaobjektum.
+- [ ] Üres állati termelési adatok esetén nincs üres `Állati termékek` táblaobjektum.
 
 ## Automatizált tesztállapot
 
