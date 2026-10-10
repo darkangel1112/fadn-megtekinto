@@ -18,8 +18,56 @@ A dialogban:
 - a Célzott export gomb a dialog mögött végig látható marad;
 - a Bezárás gomb, a jobb felső `×` és az Esc billentyű bezárása is törli a dialog állapotát.
 - ha egy kiválasztott exporttárgyhoz az adott üzemben nincs nem nulla adat, a munkalap fejlécével megmarad, de üres Excel-tábla és üres AutoFilter nem kerül rá;
+- a `Törzsadatok` export a t0 kiválasztott alapadatait és a t7_c alapján számított AKG `Igen`/`Nem` sorát adja vissza;
 - kivétel a `Támogatási jogcímek` lap: a teljes rögzített jogcímlistát akkor is kiírja, ha nincs forrásérték;
 - a súgó nagyobb, belső görgethető tartalomterületet használ, így a súgó fejléce látható marad.
+
+## Aktív export: Törzsadatok – t0 és számított AKG jelzés
+
+### Forrás és kiválasztási szabály
+
+- forrásmunkalap: `t0`;
+- forrásérték-oszlop: a t0 sablon első nem üres oszlopkódja, a jelenlegi sablonban `osz = 3`;
+- a kiválasztott t0-sorok értékei minden kijelölt üzemnél megjelennek, akkor is, ha valamelyik érték üres;
+- az AKG jelzés forrása a `t7_c` támogatási oszlopának `osz = 3` értéke;
+- az AKG-összesítő (`m7094`) mellett a szántó, gyep, ültetvény és nádas AKG-kódcsaládok is ellenőrzésre kerülnek;
+- bármely nem nulla releváns AKG-érték `Igen`, kizárólag üres vagy nulla értékek esetén `Nem`;
+- az AKG helyesbítési sor önmagában nem ad `Igen` jelzést.
+
+### Kimeneti munkalap és oszlopok
+
+```text
+Törzsadatok
+```
+
+| Oszlop | Tartalom |
+| --- | --- |
+| `Üzemkód` | a kiválasztott üzem kódja |
+| `RowCode` | t0 esetén az eredeti `mXXXX` kód, az AKG sornál `AKG` |
+| `Törzsadat megnevezése` | az üzemi alapadat megnevezése |
+| `Érték` | a t0 szöveges értéke vagy az AKG `Igen`/`Nem` jelzése |
+
+Az aktív t0-sorok:
+
+| RowCode | Exportmegnevezés |
+| --- | --- |
+| `m0011` | Vállalkozási forma |
+| `m0001` | Adózás |
+| `m0005` | Biogazdálkodás |
+| `m0075` | Ökológiai gazdálkodásra való átállás |
+| `m0002` | ÁFA-rendszer |
+| `m0018` | Könyvelés módja |
+| `AKG` | AKG gazdálkodás – számított jelzés |
+
+### Excel-formázás és fájlnév
+
+Az exportált munkalap fejlécszűrőt, rögzített első sort, bekapcsolt rácsvonalat és vékony cellakeretet kap. Az `AKG` érték `Igen` esetén zöld, `Nem` esetén semleges kiemelést kap.
+
+Ha csak a Törzsadatok export van kiválasztva, egy üzem esetén a fájlnév:
+
+```text
+<uzemkod>_torzsadatok.xlsx
+```
 
 ## Aktív export: 5C mezei leltár
 
@@ -354,7 +402,7 @@ Az üres forrásértékhez numerikus `0` kerül, és az `Adatállapot` megkülö
 
 Az AKG összesítő sorai (`m7094`, `m7080`, `m7082`, `m7084`) ellenőrzésre szolgálnak. Ne add őket hozzá a részjogcímek összegéhez. A lapon valódi numerikus összegek, egész Ft megjelenítés, fejlécszűrő, rögzített fejléc és az export többi lapjához illeszkedő formázás készül.
 
-Ha mind az öt exporttárgy ki van jelölve, a támogatási lap az ötödik munkalap. Ha egy korábbi exporttárgy nincs kiválasztva, a lap ennek megfelelően előrébb kerül.
+Ha minden elérhető exporttárgy ki van jelölve, a támogatási lap az utolsó kijelölt munkalap. Ha egy korábbi exporttárgy nincs kiválasztva, a lap ennek megfelelően előrébb kerül.
 
 Egy üzem esetén, ha csak ez az export van kiválasztva:
 

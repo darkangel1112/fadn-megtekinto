@@ -1,5 +1,14 @@
 # Változásnapló
 
+## 2026-10-10 – Törzsadatok célzott exportja
+
+- új `Törzsadatok` munkalap a t0 kiválasztott üzemi alapadataival;
+- `m0011`, `m0001`, `m0005`, `m0075`, `m0002` és `m0018` sorok exportja;
+- számított `AKG` rekord `Igen`/`Nem` értékkel a `t7_c` összesítő és részletes AKG-sorai alapján;
+- `AKG` érték esetén zöld, `Nem` esetén semleges Excel-kiemelés;
+- célzott export dialog-integráció, egyedi fájlnév és szintetikus regressziós tesztek;
+- helyi mintafájlokkal 47 üzemre végzett export-ellenőrzés.
+
 ## 2026-09-26 – Támogatási jogcímek célzott exportja
 
 - új `Támogatási jogcímek` munkalap minden kiválasztott üzemhez, fix teljes jogcímlistával;

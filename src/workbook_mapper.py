@@ -63,6 +63,25 @@ STOCK_5C_CLOSING_COLUMN = "5"
 STOCK_6B_CLOSING_COLUMN = "12"
 ANIMAL_CLOSING_COLUMN = "12"
 
+MASTER_DATA_ROW_CODES = (
+    "m0011",
+    "m0001",
+    "m0005",
+    "m0075",
+    "m0002",
+    "m0018",
+)
+MASTER_DATA_LABELS = {
+    "m0011": "Vállalkozási forma",
+    "m0001": "Adózás",
+    "m0005": "Biogazdálkodás",
+    "m0075": "Ökológiai gazdálkodásra való átállás",
+    "m0002": "ÁFA-rendszer",
+    "m0018": "Könyvelés módja",
+}
+AKG_SOURCE_PREFIXES = ("m7080", "m7082", "m7084", "m7086")
+AKG_SUMMARY_ROW_CODE = "m7094"
+
 SUPPORT_EXPORT_ITEMS = (
     ("Agrár-környezetgazdálkodási program", "m7094", "t7_c", "3", "Összesítő"),
     ("Szántó", "m7080", "t7_c", "3", "Összesítő"),
@@ -476,6 +495,113 @@ def _parse_export_number(value: Any, zero_as_missing: bool = True) -> float | No
     if number == 0 and zero_as_missing:
         return None
     return round(number, 2)
+
+
+def _first_template_value_code(template: SheetTemplate) -> str:
+    return next(
+        (code for code in template.column_codes if _clean(code)),
+        "3",
+    )
+
+
+def _akg_is_present(
+    dataframe: pd.DataFrame,
+    templates: dict[str, SheetTemplate],
+    farm_code: str,
+) -> str:
+    """Return the derived AKG yes/no status for one farm.
+
+    The summary row is the primary source, while the AKG area groups are a
+    fallback for templates or source exports where the summary is missing.
+    Correction-only rows are deliberately excluded from the flag.
+    """
+
+    template = templates.get("t7_c")
+    if template is None:
+        return "Nincs adat"
+
+    value_code = _first_template_value_code(template)
+    source_rows = dataframe[
+        (dataframe["akod"] == farm_code)
+        & (dataframe["sheet_name"] == "t7_c")
+        & (dataframe["osz"] == value_code)
+    ]
+    if source_rows.empty:
+        return "Nem"
+
+    akg_codes = {
+        row["row_code"]
+        for row in template.rows
+        if row["row_code"] == AKG_SUMMARY_ROW_CODE
+        or any(row["row_code"].startswith(prefix) for prefix in AKG_SOURCE_PREFIXES)
+        or (
+            "akg" in row["row_title"].casefold()
+            and "helyesb" not in row["row_title"].casefold()
+        )
+    }
+
+    for row in source_rows.itertuples():
+        if row.sor not in akg_codes:
+            continue
+        if _parse_export_number(row.ertek) is not None:
+            return "Igen"
+
+    return "Nem"
+
+
+def build_master_data_view(
+    dataframe: pd.DataFrame,
+    templates: dict[str, SheetTemplate],
+    farm_code: str,
+) -> pd.DataFrame:
+    """Build the targeted t0 master-data export with a derived AKG flag."""
+
+    columns = ["Üzemkód", "RowCode", "Törzsadat megnevezése", "Érték"]
+    template = templates.get("t0")
+    if template is None:
+        return pd.DataFrame(columns=columns)
+
+    value_code = _first_template_value_code(template)
+    source_rows = dataframe[
+        (dataframe["akod"] == farm_code)
+        & (dataframe["sheet_name"] == "t0")
+        & (dataframe["osz"] == value_code)
+    ]
+    records: list[dict[str, str]] = []
+
+    template_rows = {row["row_code"]: row for row in template.rows}
+    for row_code in MASTER_DATA_ROW_CODES:
+        template_row = template_rows.get(row_code)
+        if template_row is None:
+            continue
+
+        values = [
+            _clean(value)
+            for value in source_rows.loc[source_rows["sor"] == row_code, "ertek"].tolist()
+        ]
+        distinct_values = list(dict.fromkeys(value for value in values if value))
+        value = " | ".join(distinct_values)
+        records.append(
+            {
+                "Üzemkód": farm_code,
+                "RowCode": row_code,
+                "Törzsadat megnevezése": MASTER_DATA_LABELS.get(
+                    row_code,
+                    template_row["row_title"],
+                ),
+                "Érték": value,
+            }
+        )
+
+    records.append(
+        {
+            "Üzemkód": farm_code,
+            "RowCode": "AKG",
+            "Törzsadat megnevezése": "AKG gazdálkodás",
+            "Érték": _akg_is_present(dataframe, templates, farm_code),
+        }
+    )
+    return pd.DataFrame(records, columns=columns)
 
 
 def build_support_view(

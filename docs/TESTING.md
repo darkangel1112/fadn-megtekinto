@@ -57,10 +57,24 @@ Az egészségügyi végpont elvárt válasza: `ok`.
 - [ ] Az „Állatok” kérdőjele röviden jelzi a 6A záróállomány, az összesítő-kizárás és a súlysorok szabályát.
 - [ ] A „Földterületi adatok” exporttárgy alapból kijelölve jelenik meg, ha a t1_a munkalap elérhető.
 - [ ] A „Földterületi adatok” kérdőjele jelzi a nem nulla és nem üres t1_a sorok szabályát.
+- [ ] A „Törzsadatok” exporttárgy alapból kijelölve jelenik meg, ha a t0 és t7_c munkalap elérhető.
+- [ ] A „Törzsadatok” kérdőjele jelzi a t0-alapadatok és a számított AKG-jelzés szabályát.
 - [ ] A célzott export dialog az előző változathoz képest szélesebb, nagy méretű változatban jelenik meg.
 - [ ] A súgó dialog szélesebb, a tartalma saját görgetősávval görgethető, a „Súgó” fejléc látható marad.
 - [ ] A célzott export dialog bezárása után az első munkalapváltás azonnal frissíti a fő táblát.
 - [ ] A dialog bezárása a Bezárás gombbal, a jobb felső `×`-szel és az Esc billentyűvel is visszaállítja a fő nézetet.
+
+### Törzsadatok export
+
+- [ ] A „Törzsadatok” export csak akkor választható, ha a t0 és t7_c sablon is betöltődött.
+- [ ] A `Törzsadatok` munkalap a hat kiválasztott t0 sort tartalmazza, a sablon értékeivel.
+- [ ] Az üres t0-értékek üresen maradnak, a többi szöveges érték nem alakul át numerikus adattá.
+- [ ] Az export végén külön `AKG` sor szerepel `Igen` vagy `Nem` értékkel.
+- [ ] Nem nulla `m7094` vagy releváns részletes AKG-érték esetén az AKG jelzés `Igen`.
+- [ ] Kizárólag üres vagy nulla releváns AKG-érték esetén az AKG jelzés `Nem`.
+- [ ] Az AKG helyesbítési sor önmagában nem ad `Igen` jelzést.
+- [ ] A munkalap fejlécszűrőt, rácsvonalat, rögzített fejlécet és vékony cellakeretet tartalmaz.
+- [ ] Csak ezt az exportot választva a fájlnév `<uzemkod>_torzsadatok.xlsx`.
 
 ### 5C export
 
@@ -119,7 +133,7 @@ Az egészségügyi végpont elvárt válasza: `ok`.
 - [ ] A forrásbeli nulla, a kitöltetlen érték, a hiányzó forrássor és az azonosítatlan kód eltérő állapotként jelenik meg.
 - [ ] A kistermelői jogcím kód nélkül is szerepel, de az összege üres marad és ezt az adatállapot jelzi.
 - [ ] Az `m7213` és `m7240` induló támogatási sorok nem olvadnak be az `m7407` CIS-YF sorba.
-- [ ] Ha mind az öt exporttárgy be van jelölve, a `Támogatási jogcímek` az ötödik lap.
+- [ ] Ha mind a hat exporttárgy be van jelölve, a `Támogatási jogcímek` a hatodik lap.
 - [ ] A támogatási exporttárgy önmagában is helyes nevű `.xlsx` fájlt ad.
 
 ### Üres célzott exportlapok

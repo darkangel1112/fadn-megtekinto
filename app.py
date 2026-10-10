@@ -34,6 +34,7 @@ from workbook_mapper import (
     build_animal_view,
     build_autumn_sown_view,
     build_land_view,
+    build_master_data_view,
     build_sheet_view,
     build_stock_view,
     build_support_view,
@@ -519,6 +520,26 @@ def dataframes_to_excel_bytes(
                 ):
                     row[0].number_format = "#,##0"
 
+            if sheet_name == "Törzsadatok":
+                worksheet.column_dimensions["A"].width = 16
+                worksheet.column_dimensions["B"].width = 14
+                worksheet.column_dimensions["C"].width = 42
+                worksheet.column_dimensions["D"].width = 72
+                row_code_column_index = list(dataframe.columns).index("RowCode") + 1
+                value_column_index = list(dataframe.columns).index("Érték") + 1
+                for row_number in range(2, worksheet.max_row + 1):
+                    row_code_cell = worksheet.cell(row_number, row_code_column_index)
+                    value_cell = worksheet.cell(row_number, value_column_index)
+                    if row_code_cell.value != "AKG":
+                        continue
+                    value_cell.alignment = Alignment(horizontal="center", vertical="center")
+                    if value_cell.value == "Igen":
+                        value_cell.fill = PatternFill(fill_type="solid", fgColor="D9EAD3")
+                        value_cell.font = Font(color="274E13", bold=True)
+                    elif value_cell.value == "Nem":
+                        value_cell.fill = PatternFill(fill_type="solid", fgColor="E7E6E6")
+                        value_cell.font = Font(color="434343", bold=True)
+
             if "Ellenőrzés" in dataframe.columns:
                 status_column_index = list(dataframe.columns).index("Ellenőrzés") + 1
                 for row in worksheet.iter_rows(
@@ -571,6 +592,8 @@ def _targeted_export_filename(farm_code: str, subjects: list[str]) -> str:
         return f"{safe_farm}_allatok.xlsx"
     if subject_set == {"land"}:
         return f"{safe_farm}_foldteruleti_adatok.xlsx"
+    if subject_set == {"master"}:
+        return f"{safe_farm}_torzsadatok.xlsx"
     if subject_set == {"support"}:
         return f"{safe_farm}_tamogatasi_jogcimek.xlsx"
     return f"{safe_farm}_celzott_export.xlsx"
@@ -586,6 +609,18 @@ def build_targeted_export_payload(
 
     for farm_code in selected_farms:
         sheet_frames: list[tuple[str, pd.DataFrame]] = []
+        if "master" in subjects:
+            sheet_frames.append(
+                (
+                    "Törzsadatok",
+                    build_master_data_view(
+                        dataframe=bulk_data,
+                        templates=template_bundle["sheets"],
+                        farm_code=farm_code,
+                    ),
+                )
+            )
+
         if "autumn" in subjects:
             autumn_template = template_bundle["sheets"]["t5_c"]
             sheet_frames.append(
@@ -709,6 +744,7 @@ def show_targeted_export_dialog(
     st.session_state.setdefault("target_export_subject_animals", True)
     st.session_state.setdefault("target_export_subject_land", True)
     st.session_state.setdefault("target_export_subject_support", True)
+    st.session_state.setdefault("target_export_subject_master", True)
     st.session_state.setdefault("target_export_generating", False)
 
     st.caption("Válaszd ki az üzemeket és az export tárgyát.")
@@ -747,6 +783,19 @@ def show_targeted_export_dialog(
         animals_available = "t6_a" in template_bundle["sheets"]
         land_available = "t1_a" in template_bundle["sheets"]
         support_available = {"t7_c", "t7_b1"}.issubset(template_bundle["sheets"])
+        master_available = {"t0", "t7_c"}.issubset(template_bundle["sheets"])
+        st.checkbox(
+            "Törzsadatok",
+            key="target_export_subject_master",
+            disabled=not master_available,
+            on_change=clear_targeted_export_download,
+            help=(
+                "A t0 alapadatait és a t7_c alapján számított AKG Igen/Nem jelzést "
+                "teszi a Törzsadatok munkalapra."
+                if master_available
+                else "A törzsadat-exporthoz a t0 és t7_c munkalapnak is be kell töltődnie."
+            ),
+        )
         st.checkbox(
             "Ősszel vetett terület",
             key="target_export_subject_autumn",
@@ -815,6 +864,8 @@ def show_targeted_export_dialog(
             if st.session_state.get(_target_farm_key(farm_code), False)
         ]
         selected_subjects = []
+        if st.session_state["target_export_subject_master"] and master_available:
+            selected_subjects.append("master")
         if st.session_state["target_export_subject_autumn"] and autumn_available:
             selected_subjects.append("autumn")
         if st.session_state["target_export_subject_stocks"] and stocks_available:
@@ -898,6 +949,7 @@ def main() -> None:
     target_export_available = bool(bulk_data.shape[0]) and (
         any(sheet_name in sheets for sheet_name in ("t5_c", "t6_b", "t6_a", "t1_a"))
         or {"t7_c", "t7_b1"}.issubset(sheets)
+        or {"t0", "t7_c"}.issubset(sheets)
     )
     target_export_requested = st.sidebar.button(
         "Célzott export",

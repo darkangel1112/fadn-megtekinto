@@ -48,6 +48,7 @@ Felelős:
 - 5C–6B kódalapú készlet-párosítás és célzott készlet-exportnézet építése;
 - 6A záróállomány-alapú, összesítő sorokat kizáró állat-exportnézet építése.
 - t1_a földterületi exportnézet építése a megjelenítő sorrendje és értékszűrése szerint;
+- t0 törzsadat-exportnézet építése a kiválasztott alapadatokkal és a számított AKG jelzéssel;
 - a rögzített támogatási jogcímlista előállítása a `t7_c` és `t7_b1` forráskódjai alapján, hiányzó értékek jelölésével.
 
 ### `sugo.md`
@@ -98,6 +99,14 @@ A dinamikus sorazonosítók numerikusan rendeződnek, ha numerikus értéket tar
 A `build_land_view` a `t1_a` sablonhoz tartozó általános nézetből indul ki, és üzemenként csak azokat a sorokat tartja meg, amelyekben legalább egy valódi értékoszlop nem üres és nem nulla. A sablon összesítő és számított sorai nem kapnak külön kizárási szabályt.
 
 A kimenet a `FarmCode`, `RowCode`, `RowTitle` mezőket és a nem üres kódú t1_a értékoszlopokat tartalmazza. A `DynRowSerial`, `Dimension1` és a sablon üres záró fejléce nem kerül a célzott munkalapra. Az értékek export előtt numerikus értékké alakulnak, a hiányzó értékek pedig üresek maradnak.
+
+## t0 törzsadat-export
+
+A `build_master_data_view` a `t0` munkalap hat kiválasztott, üzemi alapadat jellegű sorát a sablon sorrendjéhez igazítva adja vissza: `m0011`, `m0001`, `m0005`, `m0075`, `m0002` és `m0018`. Az értékek szöveges törzsadatként maradnak meg, az üres t0-értékek üresen maradnak.
+
+Az export egy további, számított `AKG` sort is létrehoz. Az `Igen` jelzéshez a mapper a `t7_c` `osz = 3` támogatási értékoszlopában először az `m7094` AKG összesítő sort, majd a szántó-, gyep-, ültetvény- és nádas AKG-kódcsaládokat vizsgálja. Bármely nem nulla érték `Igen`, kizárólag üres vagy nulla értékek esetén `Nem`. Az AKG helyesbítési sor önmagában nem aktiválja a jelzést.
+
+A kimeneti dataframe oszlopai: `Üzemkód`, `RowCode`, `Törzsadat megnevezése`, `Érték`. A számított sor technikai `RowCode` értéke `AKG`, nem eredeti `mXXXX` azonosító.
 
 ## Munkamenet- és dialogállapot
 

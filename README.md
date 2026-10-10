@@ -19,6 +19,7 @@ Az alkalmazás Streamlit-alapú, és a feltöltött munkafüzetekből dolgozik. 
 - célzott készlet-export az 5C és 6B munkalap alapján;
 - célzott állat-export a 6A munkalap záróállományából;
 - célzott t1_a földterületi export a megjelenítő táblázatos formájában;
+- célzott t0 törzsadat-export az alapadatokkal és a számított AKG jelzéssel;
 - célzott támogatási jogcím-export AKG- és kapcsolódó támogatási összegekkel;
 - egy üzem esetén egy Excel-fájl, több üzem esetén ZIP-csomag üzemenként külön Excel-fájlokkal;
 - Excel-szűrő, rácsvonal, vékony cellakeret, fejlécformázás és numerikus két tizedes formátum.
@@ -110,6 +111,12 @@ A célzott export `Állatok` munkalapja a 6A sablon nem nulla záróállományai
 - A `Záróérték` valódi numerikus Excel-cellaként, két tizedessel kerül kiírásra.
 - Ha egy üzemnél nincs releváns nem nulla állatadat, az `Állatok` munkalap csak fejléccel készül, hibás üres Excel-tábla nélkül.
 
+## Törzsadatok export röviden
+
+A `Törzsadatok` munkalap a t0 kiválasztott üzemi alapadatait egy üzemenkénti, egységes rekordlistában adja vissza. Az export az alábbi sorokat tartalmazza: `m0011` vállalkozási forma, `m0001` adózás, `m0005` biogazdálkodás, `m0075` ökológiai gazdálkodásra való átállás, `m0002` ÁFA-rendszer és `m0018` könyvelés módja.
+
+Az export végén külön számított `AKG` sor szerepel `Igen` vagy `Nem` értékkel. A jelzés a `t7_c` AKG összesítő és részletes sorai alapján készül, és nem a t0 egyetlen mXXXX sorából származik. A munkalap oszlopai: `Üzemkód`, `RowCode`, `Törzsadat megnevezése`, `Érték`.
+
 ## Földterületi adatok export röviden
 
 A célzott export `Földterületi adatok` munkalapja a `t1_a` sablon minden olyan sorát tartalmazza, amelyben legalább egy értékoszlopban nem nulla, nem üres adat található.
@@ -136,7 +143,7 @@ A feltöltött munkafüzetek nem kerülnek tartós alkalmazás-adattárba. Az ad
 
 - [Súgó](sugo.md) – rövid felhasználói leírás az alkalmazáson belül.
 - [Architektúra](docs/ARCHITECTURE.md) – modulok, adatfolyam és bővítési pontok.
-- [Export-specifikáció](docs/EXPORTS.md) – jelenlegi 5C, 5C/6B készlet-, 6A állat- és t1_a földterületi export.
+- [Export-specifikáció](docs/EXPORTS.md) – jelenlegi t0 törzsadat-, 5C, 5C/6B készlet-, 6A állat- és t1_a földterületi export.
 - [Üzemeltetés](docs/OPERATIONS.md) – helyi és systemd-alapú indítás, naplózás, hibakeresés.
 - [Tesztelés](docs/TESTING.md) – érzékeny adatok nélküli ellenőrzési eljárás.
 - [Változásnapló](CHANGELOG.md) – funkcionális változások és fejlesztési állapot.

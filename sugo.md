@@ -31,6 +31,10 @@ A bal oldali sávban a feltöltött ömlesztett és sablonfájl után megjelenik
 - A „Földterületi adatok” export a `t1_a` munkalap nem nulla és nem üres adatsort tartalmazó sorait adja vissza.
 - A földterületi munkalap a megjelenítő sorrendjét követi: `FarmCode`, `RowCode`, `RowTitle`, majd a hét t1_a értékoszlopot.
 - A t1_a összesítő és számított sorai is bekerülnek, ha van bennük adat.
+- A „Törzsadatok” export a `t0` munkalap hat kiválasztott üzemi alapadatát adja vissza: vállalkozási forma, adózás, biogazdálkodás, ökológiai átállás, ÁFA-rendszer és könyvelés módja.
+- A `Törzsadatok` munkalap végén külön `AKG` sor szerepel `Igen` vagy `Nem` értékkel. Ez a `t7_c` AKG összesítő és részletes sorai alapján számított jelzés, és a szántó, gyep, ültetvény vagy nádas AKG-érintettségét egységesen kezeli.
+- A `Törzsadatok` munkalap oszlopai: `Üzemkód`, `RowCode`, `Törzsadat megnevezése`, `Érték`. A számított AKG sor `RowCode` értéke `AKG`.
+- Ha csak ez az export van kiválasztva, a munkalap neve `Törzsadatok`, egy üzemnél a fájl neve `<uzemkod>_torzsadatok.xlsx`.
 - A „Támogatási jogcímek” export a `t7_c` és `t7_b1` munkalapokból készül, és minden kijelölt üzemnél ugyanazt a teljes jogcímlistát jeleníti meg.
 - Az AKG-, erdészeti és Natura 2000 összegek a `t7_c` `osz = 3` adataiból, a fiatal gazdák CIS-YF összege az `m7407` `t7_b1` `osz = 4` adatából származik.
 - A támogatási összegek numerikus Excel-cellákban, egész forintként jelennek meg; a forrás eFt értékei 1 000-rel szorozva kerülnek kiírásra.
